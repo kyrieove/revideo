@@ -1,9 +1,9 @@
 {
   "command": "python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast",
-  "tested_sha": "1d43759e05e91e9b9475a232fa29ff2eb43df748",
-  "summary": "39 unit tests and 28 media tests passed (100% OK)",
+  "tested_sha": "0f1462e6513c24131a36f1c03fc60e4d3674a630",
+  "summary": "41 unit tests and 28 media tests passed (100% OK)",
   "exit_code": 0,
-  "unit_tests_passed": 39,
+  "unit_tests_passed": 41,
   "media_tests_passed": 28,
-  "timestamp": "2026-11-12T20:29:00Z"
+  "timestamp": "2026-11-12T20:55:00Z"
 }

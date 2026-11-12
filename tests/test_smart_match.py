@@ -162,5 +162,44 @@ class TestSmartMatch(unittest.TestCase):
             self.assertEqual(mock_extract2.call_count, 1)
             self.assertEqual(win_a_resampled[0]["features"]["motion_direction"], "up")
 
+
+    def test_cache_invalidates_on_middle_frame_mutation(self):
+        """验证 F-011：首末时间相同、但中间帧发生变化时，采样指纹更新并使旧缓存失效。"""
+        from unittest.mock import patch
+        from scripts.smart_match import enumerate_windows, clear_window_feature_cache
+        clear_window_feature_cache()
+
+        asset_initial = {
+            "asset_id": "test_mid_mutate",
+            "source_fingerprint": "fp_mid_1",
+            "duration_seconds": 2.0,
+            "valid": True,
+            "features": {"motion_intensity": 0.5, "motion_direction": "static"},
+            "sampled_frames": [
+                {"timestamp": 0.2, "luminance": 0.5, "motion": 0.5, "direction": "right"},
+                {"timestamp": 0.5, "luminance": 0.5, "motion": 0.1, "direction": "static"},  # 中间帧
+                {"timestamp": 0.8, "luminance": 0.5, "motion": 0.5, "direction": "right"}
+            ]
+        }
+
+        # 首次计算
+        win1 = enumerate_windows(asset_initial, required_duration=1.0, step=1.0)
+        self.assertTrue(len(win1) > 0)
+
+        # 保持首末帧时间不变，仅篡改中间帧特征
+        asset_mutated = dict(asset_initial)
+        asset_mutated["sampled_frames"] = [
+            {"timestamp": 0.2, "luminance": 0.5, "motion": 0.5, "direction": "right"},
+            {"timestamp": 0.5, "luminance": 0.9, "motion": 0.9, "direction": "up"},     # 中间帧被更改
+            {"timestamp": 0.8, "luminance": 0.5, "motion": 0.5, "direction": "right"}
+        ]
+
+        # 必须触发重新计算，不复用旧缓存
+        with patch("scripts.material_index.extract_features") as mock_extract:
+            mock_extract.return_value = {"motion_direction": "up", "dominant_direction": "up", "brightness": 0.9, "motion_intensity": 0.9}
+            win2 = enumerate_windows(asset_mutated, required_duration=1.0, step=1.0)
+            self.assertEqual(mock_extract.call_count, 1)
+            self.assertEqual(win2[0]["features"]["motion_direction"], "up")
+
 if __name__ == "__main__":
     unittest.main()

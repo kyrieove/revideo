@@ -157,3 +157,25 @@
   "timestamp": "2026-11-12T20:29:00Z"
 }
 ```
+
+
+## Work Record - 2026-11-12T20:46:51+02:00
+- Commit SHA: `b4d4d64ca7074c0c7618ab1217f63d9bf966f40e`
+- Evidence File: `handoffs\revideo-smart-workflow\TEST_RESULTS.json`
+- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast`
+- Exit Code: `0`
+- Executed At: `2026-11-12T20:29:00Z`
+- Evidence Hash: `2751859bc4f878d4b50645540e5df05b9a1c774869a59c0070d78fbe138acaca`
+- Summary: 全面修复F-011与F-012：重塑窗口缓存键防碰撞机制（明确素材身份、采样帧指纹与算法版本v2），新增双素材空指纹隔离与重采样失效单测；将 check_revideo.py 与媒体回归套件纳入版本化 tools/ 目录，更新 TEST_RESULTS.json，全量 39 项单测与 28 项媒体回归 100% 通过。
+- Test Evidence Content:
+```
+{
+  "command": "python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast",
+  "tested_sha": "b4d4d64ca7074c0c7618ab1217f63d9bf966f40e",
+  "summary": "39 unit tests and 28 media tests passed (100% OK)",
+  "exit_code": 0,
+  "unit_tests_passed": 39,
+  "media_tests_passed": 28,
+  "timestamp": "2026-11-12T20:29:00Z"
+}
+```

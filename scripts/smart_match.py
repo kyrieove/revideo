@@ -42,9 +42,15 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
     if not asset_identity:
         asset_identity = f"anon_{id(asset)}"
         
-    # 采样配置版本：根据帧数与首末时间戳建立指纹，采样配置变化自动使缓存隔离失效
+    # 采样配置与内容版本：计算采样帧全量内容指纹，任何中间帧变化均自动使缓存失效 (F-011)
     if all_frames:
-        sample_version = f"frames_{len(all_frames)}_{all_frames[0].get('timestamp',0):.2f}_{all_frames[-1].get('timestamp',0):.2f}"
+        import hashlib
+        frame_sigs = [
+            f"{f.get('timestamp', 0):.3f}:{f.get('luminance', 0):.3f}:{f.get('motion', 0):.3f}:{f.get('direction', '')}"
+            for f in all_frames
+        ]
+        sample_hash = hashlib.sha256(";".join(frame_sigs).encode('utf-8')).hexdigest()[:16]
+        sample_version = f"frames_{len(all_frames)}_{sample_hash}"
     else:
         sample_version = "no_frames"
 
