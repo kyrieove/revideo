@@ -102,6 +102,19 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
         # 仅覆盖窗口的语义片段才有资格作为动作门禁的证据。
         semantic_evidence = None
         local_feats = dict(global_feats) | dict(local_feats)
+        # 未核验的全素材语义不能直接当作时间窗口的事实。
+        # 仅 local semantic_segments 或已审核的 full_asset 标签允许参与硬门禁。
+        full_verified = (
+            asset.get("semantic_scope") == "full_asset"
+            and asset.get("semantic_verified") is True
+        )
+        if not full_verified:
+            for field in (
+                "subject", "action", "actions", "action_tags",
+                "camera_motion", "dominant_scene", "scene_tags",
+                "start_pose", "end_pose", "subject_position",
+            ):
+                local_feats.pop(field, None)
         for seg in segments if isinstance(segments, list) else []:
             if not isinstance(seg, dict):
                 continue
