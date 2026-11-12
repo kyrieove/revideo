@@ -14,7 +14,7 @@ from scripts.gap_analyzer import (
     generate_capture_task_sheet,
 )
 from scripts.shot_contract import ShotContract, validate_contracts
-from scripts.smart_match import enumerate_windows
+from scripts.smart_match import enumerate_windows, propose
 from scripts.smart_compose import compose
 from scripts.smart_schema import fingerprint_render_plan
 from scripts.smart_workflow import build_proposed_plan, approve
@@ -249,6 +249,104 @@ class ContractSafetyRegression(unittest.TestCase):
                 changed = build_index(["/media"], str(output))
             self.assertFalse(changed["assets"][0]["semantic_verified"])
             self.assertNotIn("action", changed["assets"][0]["features"])
+
+
+    def test_unverified_full_asset_semantics_requires_review(self):
+        c = contract()
+        raw = {
+            "asset_id": "unverified", "valid": True, "duration_seconds": 12.0,
+            "features": {
+                "subject": c.subject, "action": c.action,
+                "camera_motion": c.camera_motion, "dominant_scene": c.scene_type,
+            },
+        }
+        result = analyze_material_gaps([c], {"assets": [raw]})
+        self.assertEqual(result["status"], "REVIEW_REQUIRED")
+        self.assertEqual(result["gap_count"], 0)
+        self.assertEqual(result["review_count"], 1)
+        for window in enumerate_windows(raw, 1.0):
+            self.assertNotEqual(
+                evaluate_contract_match(
+                    window, c, require_window_evidence=True
+                )["status"], "PASS",
+            )
+
+    def test_partial_semantic_segment_cannot_inherit_unverified_global_labels(self):
+        c = contract()
+        raw = {
+            "asset_id": "partial", "valid": True, "duration_seconds": 10.0,
+            "features": {
+                "subject": c.subject, "action": c.action,
+                "camera_motion": c.camera_motion,
+                "dominant_scene": c.scene_type,
+            },
+            "semantic_segments": [{
+                "start": 3.0, "end": 6.0,
+                "features": {"action": c.action}
+            }],
+        }
+        result = analyze_material_gaps([c], {"assets": [raw]})
+        self.assertEqual(result["status"], "REVIEW_REQUIRED")
+        self.assertEqual(result["matched_count"], 0)
+        for window in enumerate_windows(raw, 1.0):
+            self.assertNotEqual(
+                evaluate_contract_match(window, c, require_window_evidence=True)["status"],
+                "PASS",
+            )
+
+    def test_contract_aware_propose_filters_wrong_action(self):
+        source = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 30,
+            "shots": [{"id": 1, "start": 0, "end": 30, "target_energy": 0.9}],
+            "contracts": [contract().to_dict()],
+        }
+        bad = {
+            "asset_id": "bad", "path": "/media/bad.mp4", "valid": True,
+            "duration_seconds": 60.0,
+            "features": {"motion_intensity": 0.95},
+            "semantic_scope": "full_asset", "semantic_verified": True,
+            "semantic_segments": [],
+        }
+        bad["features"].update({
+            "subject": "player_character", "action": "running",
+            "camera_motion": "pan_right", "dominant_scene": "snow_mountain",
+        })
+        plan = propose(source, {"assets": [bad, verified_asset()]}, top_k=2)
+        self.assertEqual(len(plan["slots"]), 1)
+        self.assertTrue(plan["slots"][0]["candidates"])
+        self.assertTrue(all(
+            w["path"] == "/media/verified.mp4"
+            for w in plan["slots"][0]["candidates"]
+        ))
+
+    def test_constraints_contracts_survive_compose_for_audit(self):
+        source = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 30,
+            "shots": [{"id": 1, "start": 0, "end": 30}],
+        }
+        result = compose(
+            source, {"assets": [verified_asset()]},
+            constraints={"contracts": [contract().to_dict()]},
+        )
+        self.assertIn("contracts", result)
+        self.assertEqual(len(result["contracts"]), 1)
+        self.assertEqual(result["contract_audit"]["status"], "PASSED")
+
+    def test_contract_required_cannot_be_stripped_from_render(self):
+        ev = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 30,
+            "contract_required": True,
+            "shots": [{
+                "id": 1, "start": 0, "end": 30,
+                "material": "/media/verified.mp4", "material_in": 40.0,
+            }],
+        }
+        ev["smart_workflow"] = {
+            "schema_version": 1, "status": "approved",
+            "approval_sha256": fingerprint_render_plan(ev),
+        }
+        with self.assertRaisesRegex(ValueError, "CONTRACTS_REQUIRED"):
+            validate_timeline(ev)
 
 
 if __name__ == "__main__":
