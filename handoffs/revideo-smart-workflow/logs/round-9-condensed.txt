@@ -1,0 +1,31 @@
+# Antigravity Code Review Request [req-revideo-smart-workflow-r9-review]
+
+- **Task ID**: `revideo-smart-workflow`
+- **Round**: 9
+- **Reviewed Head Commit SHA**: `0060fc9de9affe0fe65a837ff6b33ad641a6422a`
+- **Repository Root**: `D:/2/dev/revideo`
+- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/0060fc9de9affe0fe65a837ff6b33ad641a6422a
+- **Commit Publish Status**: PUSHED_TO_REMOTE
+
+## Round 9 变更与整改说明
+针对 Round 8 提出的 F-011 与 F-012 细化要求：
+1. **F-011 采样帧内容摘要防中间帧篡改**：
+   - 在 `scripts/smart_match.py` 中，遍历 `all_frames` 提取 `timestamp:luminance:motion:direction`，经 `hashlib.sha256` 聚合生成 16 位内容指纹：`sample_version = frames_{count}_{sample_hash}`。
+   - 只要任何中间帧内容发生细微变更，`sample_version` 立即变动使旧缓存失效并触发重算。
+   - 回归测试：在 `tests/test_smart_match.py` 补充 `test_cache_invalidates_on_middle_frame_mutation`，严格断言首末时间相同、仅中间帧突变时重新调用计算并产出新结果。
+2. **F-012 彻底消除工具硬编码绝对路径**：
+   - 重构 `tools/check_revideo.py`，使用 `Path(__file__).resolve().parent.parent` 动态定位仓库根目录与测试目录，消除对开发机绝对路径的硬依赖。
+   - 外部部署目录（sync_install.py / SKILL）支持通过环境变量 `REVIDEO_VIDEO_ROOT` / `REVIDEO_SKILL_ROOT` 或 `--with-deploy` 显式指定，路径不存在时输出清晰 INFO 并自动跳过，保证仓库在任意干净检出环境下均可独立完整运行。
+   - 证据与源码原子绑定：`TEST_RESULTS.json` 中的 `tested_sha` 与当前 Git HEAD SHA (`0060fc9de9affe0fe65a837ff6b33ad641a6422a`) 严格一致，41 项单元测试与 28 项媒体测试全部本地独立通过（100% OK）。
+
+请针对精确 SHA (`0060fc9de9affe0fe65a837ff6b33ad641a6422a`) 进行独立审查，并在回复末尾附带严格符合契约的机器可读 JSON 区块：
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 9,
+  "reviewed_head_sha": "0060fc9de9affe0fe65a837ff6b33ad641a6422a",
+  "decision": "<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>",
+  "findings": [],
+  "next_action": "说明"
+}
+```

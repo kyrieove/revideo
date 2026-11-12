@@ -1,0 +1,26 @@
+# Antigravity Code Review Request [req-revideo-smart-workflow-r7-review]
+
+- **Task ID**: `revideo-smart-workflow`
+- **Round**: 7
+- **Reviewed Head Commit SHA**: `9af9d31c992864497ea43929c9cc552c69dda6a7`
+- **Repository Root**: `D:/2/dev/revideo`
+- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/9af9d31c992864497ea43929c9cc552c69dda6a7
+- **Commit Publish Status**: PUSHED_TO_REMOTE
+
+## Round 7 变更与整改说明
+针对 Round 6 提出的两项 finding：
+1. **F-009 (P1) 局部窗口缓存**：在 scripts/smart_match.py 增加 _WINDOW_FEATURE_CACHE 全局字典与 clear_window_feature_cache()，键为 (fingerprint, in_sec, out_sec)。在 enumerate_windows 中计算前先查缓存，避免多窗口重复切片与重复特征计算。
+2. **F-010 (P1) 运动方向统一 Schema**：在 scripts/material_index.py 的 extract_features 返回中同时输出 motion_direction 与 dominant_direction 保证契约一致；在 smart_match.py 中对窗口特征与评分器均统一字段读取。
+3. **回归测试**：在 tests/test_smart_match.py 新增 test_window_feature_cache_and_direction_schema，全量 39 项单元测试与 28 项媒体回归测试全部通过。
+
+请针对上述精确 SHA (`9af9d31c992864497ea43929c9cc552c69dda6a7`) 的真实源码与测试进行独立审查，并在回复末尾附带严格符合契约的机器可读 JSON 区块：
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 7,
+  "reviewed_head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+  "decision": "<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>",
+  "findings": [],
+  "next_action": "说明"
+}
+```

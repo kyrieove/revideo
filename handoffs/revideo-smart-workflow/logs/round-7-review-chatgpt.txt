@@ -1,0 +1,45 @@
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 7,
+  "reviewed_head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+  "decision": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "F-011",
+      "severity": "P1",
+      "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+      "file": "scripts/smart_match.py",
+      "line": 33,
+      "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+      "fix_steps": [
+        "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+        "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+        "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+        "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+        "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+      ],
+      "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+      "introduced_by_fix": true
+    },
+    {
+      "id": "F-012",
+      "severity": "P1",
+      "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+      "file": "tests/test_smart_match.py",
+      "line": 100,
+      "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+      "fix_steps": [
+        "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+        "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+        "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+      ],
+      "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+      "introduced_by_fix": false
+    }
+  ],
+  "next_action": "Round 7 真实代码审查完成。F-010 方向字段不匹配已修复；F-009 已实现基本缓存，但新增的 F-011 表明缓存身份和采样版本隔离仍不可靠。另有 F-012 测试可复现性问题。建议用户选择 F-011、F-012 后，执行端先补失败测试，再修复缓存键和证据链，提交新的精确 SHA 复审。不得自动推送、创建PR或修改未获授权的其他问题。"
+}
+
+```

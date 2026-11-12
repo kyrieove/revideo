@@ -100,16 +100,21 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
     return windows
 
 
-def score_candidate(target: Dict[str, Any], candidate: Dict[str, Any], weights: Optional[Dict[str, float]] = None) -> float:
-    """根据目标镜头的能量、动向与景别预期，对候选素材进行动态、可解释打分。"""
+def score_candidate(target: Dict[str, Any], candidate: Dict[str, Any], weights: Optional[Dict[str, float]] = None, preset: str = "default") -> float:
+    """根据目标镜头的能量、动向、景别与场景语义，对候选素材进行动态打分。支持 travelogue 模式。"""
     cand_feats = candidate.get("features", {})
     cand_motion = float(cand_feats.get("motion_intensity", 0.3))
     cand_dir = cand_feats.get("motion_direction") or cand_feats.get("dominant_direction") or "static"
     cand_bright = float(cand_feats.get("brightness", 0.5))
+    cand_scene = cand_feats.get("dominant_scene", "scenic_neutral")
+    cand_tags = cand_feats.get("scene_tags", [cand_scene])
 
     target_energy = float(target.get("target_energy", 0.5))
     target_role = target.get("role", "ambient")
     target_dir = target.get("target_direction")
+    target_scene = target.get("target_scene") or target.get("scene")
+
+    reasons = ["duration_match"]
 
     # 1. 能量与动作匹配分
     energy_score = 1.0 - min(1.0, abs(target_energy - cand_motion))
@@ -121,14 +126,26 @@ def score_candidate(target: Dict[str, Any], candidate: Dict[str, Any], weights: 
         # 高能量偏好运动，低能量偏好平稳
         dir_score = 0.9 if (target_energy > 0.6 and cand_dir != "static") or (target_energy <= 0.6 and cand_dir == "static") else 0.6
 
-    # 3. 角色意图匹配分
+    # 3. 场景语义匹配分
+    if target_scene:
+        scene_score = 1.0 if target_scene in cand_tags or target_scene == cand_scene else 0.25
+        if scene_score > 0.8:
+            reasons.append("scene_match")
+    else:
+        scene_score = 0.8
+
+    # 4. 角色意图匹配分
     if target_role == "highlight":
         role_score = 0.9 if cand_motion > 0.25 or cand_bright > 0.4 else 0.4
     else:
         role_score = 0.8
 
-    final_score = energy_score * 0.45 + dir_score * 0.3 + role_score * 0.25
-    reasons = ["duration_match"]
+    # 权重配置：针对 travelogue 风光打卡模式降低动作能量权重，大幅提高场景契合度与画风连贯度
+    if preset == "travelogue":
+        final_score = scene_score * 0.50 + role_score * 0.20 + dir_score * 0.15 + energy_score * 0.15
+    else:
+        final_score = energy_score * 0.45 + dir_score * 0.3 + role_score * 0.25
+
     if energy_score > 0.7:
         reasons.append("energy_match")
     if dir_score > 0.8:

@@ -1,0 +1,31 @@
+# Antigravity Code Review Request [req-revideo-smart-workflow-r8-review]
+
+- **Task ID**: `revideo-smart-workflow`
+- **Round**: 8
+- **Reviewed Head Commit SHA**: `b4d4d64ca7074c0c7618ab1217f63d9bf966f40e`
+- **Repository Root**: `D:/2/dev/revideo`
+- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/b4d4d64ca7074c0c7618ab1217f63d9bf966f40e
+- **Commit Publish Status**: PUSHED_TO_REMOTE
+
+## Round 8 变更与整改说明
+针对 Round 7 提出的 F-011 与 F-012：
+1. **F-011 彻底解决缓存键碰撞与版本隔离**：
+   - 确立素材唯一身份：优先读取 `source_fingerprint`，若为空则回退至 `asset_id`，再回退至 `path`，彻底杜绝多素材因空指纹共享缓存。
+   - 引入采样帧版本指纹：`sample_version = frames_{count}_{start_t}_{end_t}`，采样帧发生变动时旧缓存自动隔离失效。
+   - 算法版本契约：`FEATURE_ALGO_VERSION = 'v2'`，缓存键为 5 元组 `(asset_identity, sample_version, algo_version, in_sec, out_sec)`。
+   - 单测验证：在 `tests/test_smart_match.py` 补充 `test_cache_isolation_on_empty_fingerprint_and_resampling`，用 `mock.patch` 严格断言缓存命中时 `extract_features` 调用次数为 0，并断言采样变更后重新计算。
+2. **F-012 版本化回归测试与证据链闭环**：
+   - 将 `check_revideo.py`、`test_revideo.py`、`test_revideo_media.py`、`test_revideo_reference.py` 正式纳入仓库版本化 `tools/` 目录，杜绝外部环境缺失。
+   - 版本化提交 `TEST_RESULTS.json` 与 `TEST_RESULTS.md`，记录真实测试 SHA 与命令（`python -m unittest` + `check_revideo.py --fast`，退出码 0，39 项单测与 28 项媒体回归全部 100% 通过）。
+
+请针对精确 SHA (`b4d4d64ca7074c0c7618ab1217f63d9bf966f40e`) 的真实代码与测试进行独立审查，并在回复末尾附带严格符合契约的机器可读 JSON 区块：
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 8,
+  "reviewed_head_sha": "b4d4d64ca7074c0c7618ab1217f63d9bf966f40e",
+  "decision": "<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>",
+  "findings": [],
+  "next_action": "说明"
+}
+```

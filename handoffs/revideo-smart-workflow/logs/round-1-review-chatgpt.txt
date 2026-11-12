@@ -1,0 +1,36 @@
+下一步：将本地提交 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d 推送到非默认开发分支，或将该 SHA 的完整源码和测试证据打包上传。Round 1 审查结论BLOCKED · 源码不可读取已通过 GitHub 连接实际查询指定 SHA，结果如下：检查项GitHub 返回结果读取指定 CommitHTTP 422：No commit found for SHA失败读取 scripts/smart_schema.pyHTTP 404：No commit found for the ref失败读取指定 SHA 的完整源码树HTTP 422：Invalid object requested失败核验 11 项测试的实际代码和输出测试文件未能读取未验证因此，本轮不能对 4d4f67e 作出正式代码质量判定，也不能编造具体代码行的 P0/P1 问题。你提交的测试记录显示 Ran 11 tests in 0.001s OK，但这是执行端提供的结果，不等于已完成独立复测。进度：源码访问检查已完成；代码审查受阻；双模架构修订可以继续。修订后的方案：双模剪辑系统用户新确认的范围应视为架构级需求，而不是在原有复刻模式上增加一个简单的开关。统一素材智能分析层素材扫描 · 精彩片段检测 · 运动/色彩/景别 · 特征索引复刻模式输入：参考片 + 素材池分析参考片锁定切点与节奏smart_reference生成目标镜头槽位自主创作模式输入：素材池 + 可选 BGM提取素材精彩点设计叙事与能量曲线smart_timeline自主生成镜头槽位smart_match + smart_compose候选匹配 · 全局组接 · 审美连贯性评分 · 多方案生成人工审查 → 草稿预览 → 审批 → 正式渲染两种模式共享同一套审批、预览和导出流程关键架构原则：两个模式的区别仅在于时间轴和镜头意图由谁生成；素材推荐、人工决策和渲染尽量复用。两种模式的不可变约束维度复刻模式自主创作模式切点来自参考片，不得自行移动由 smart_timeline 生成镜头时长参考片决定按动作、音乐与叙事决定BGM默认保留参考片原声用户可提供，也可以没有镜头选择匹配参考片视觉角色优化精彩度、叙事和组接审批后修改素材或参数需要重新审批修改时间轴或素材需要重新审批自主创作模式不能简单地把随机素材塞进固定长度的槽位。它必须先确定片段价值和叙事方向，再决定镜头顺序与切点。第一批落地代码指导以下内容是面向执行端的新增设计指导，不是对未读取提交的代码审查结论。1. 先建立统一时间轴契约新增 references/dual-mode-timeline.md。两种模式最终都产生统一的 TimelinePlan，后续匹配引擎不应依赖参考视频是否存在。JSON{
+  "schema_version": 1,
+  "mode": "original",
+  "fps_str": "30/1",
+  "frames": 300,
+  "audio": {
+    "type": "none",
+    "path": null
+  },
+  "slots": [
+    {
+      "id": 1,
+      "start": 0,
+      "end": 45,
+      "role": "hook",
+      "energy_target": 0.9,
+      "source": "generated"
+    },
+    {
+      "id": 2,
+      "start": 45,
+      "end": 105,
+      "role": "build",
+      "energy_target": 0.55,
+      "source": "generated"
+    }
+  ]
+}这里的 slots 是结构节选，完整计划还必须连续覆盖全部 300 帧。audio.type 为 none 时，第一版本允许输出无声视频，不能偷偷回退到参考片音轨。2. 新增 scripts/smart_timeline.py负责生成和验证时间轴，而不是直接指定素材路径。建议入口：Pythondef generate_original_timeline(    highlights,    *,    fps_str,    target_frames=None,    beat_frames=None,    narrative="auto",):    """Generate shot slots without a reference video."""必须实现：没有 BGM：根据素材精彩片段的有效长度、动作峰值和叙事阶段决定镜头长度。有 BGM：以音乐节拍及能量变化提出候选切点，但允许为了动作完整性保留非鼓点切点。target_frames 未指定：依据可用精彩片段总量确定建议时长，并报告选择依据。所有镜头使用连续半开区间 [start, end)，无负帧、重叠、空镜或隐式补帧。素材不足时返回缺失信息，不自动重复素材凑足时长。初期可以使用确定性的启发式算法。后续才增加 VLM 对动作意义、叙事和场面关系的判断。3. 新增 scripts/smart_compose.py这个模块负责决定「哪个精彩片段放在哪一镜，以及为什么」。建议函数：Pythondef compose(    timeline,    candidates,    *,    beam_width=8,    top_k=3,    constraints=None,):    """Rank complete edit sequences."""与现有 smart_match 的职责区分：模块职责smart_match单个镜头槽位的候选匹配smart_timeline自主创作模式的镜头结构与节奏生成smart_compose全片的镜头排序、组接与重复控制smart_compose 应同时考虑单镜质量、相邻镜头运动衔接、景别变化、色彩关系、人物或主体连续性，以及整片的叙事递进。不要将 AI 生成的叙事理由当作已经验证的事实。未知语义必须保留人工核验标记。4. 新增第一批失败先行测试目标文件：tests/test_smart_timeline.py、tests/test_smart_compose.py。测试必须验证的行为test_original_without_reference不提供参考片也能生成合法时间轴test_original_without_bgm无音乐时也能生成剪辑计划test_timeline_has_no_gaps所有镜头连续覆盖完整时间轴test_insufficient_material_fails素材不足时不伪造可用帧test_compose_is_deterministic相同输入产生相同排序test_reference_cuts_unchanged复刻模式不会被新生成器改变切点以上是第一批建议测试，尚未执行。执行端应首先在当前基线上运行这些测试，记录失败原因，再完成对应实现。还必须保留两条后续集成要求：一是审批指纹包含完整生成时间轴和素材选择；二是新增自主创作模式不能使原有复刻模式的正式渲染、音频同步和逐帧验收退化。本轮审查状态已完成：双模系统架构和首批代码接口设计未完成：指定 SHA 的独立代码审查可以立即通过本地 PowerShell 创建精确提交的审查包：powershellSet-Location D:\2\dev\revideo
+git archive --format=zip -o revideo-r1-review.zip 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d将 ZIP 连同 TEST_RESULTS.json 上传后，才能对真实代码逐行审查并正式列出 findings。机器可读审查结果json:chatgpt-review{
+  "task_id": "revideo-smart-workflow",
+  "round": 1,
+  "reviewed_head_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+  "decision": "BLOCKED",
+  "findings": [],
+  "next_action": "指定 SHA 尚未发布至 GitHub。已实际调用 GitHub Commit API、文件读取 API 和 Git Tree API，分别返回 422、404 和 422，无法读取或核对该提交的真实源码与代码行。执行端提供的 11 项测试通过记录仅作为待核实证据，不作为独立验收结果。用户已明确要求将 revideo 扩展为双模剪辑系统，建议在后续实施范围中加入：1. 统一 TimelinePlan 契约；2. smart_timeline 原创时间轴生成器；3. smart_compose 全局组接引擎；4. 无参考片、无 BGM、连续帧覆盖、素材不足、确定性排序和复刻切点保持不变的失败先行测试。上述内容是修订方案，不是已审查代码，也不构成对任何既有 finding 的自动接受或实施授权。请先将完整精确 SHA 推送到非默认开发分支，或上传 git archive 生成的源码 ZIP 和对应测试证据，然后重新提交本轮代码审查。未获得可读取源码前，不得作出 ACCEPTED 或逐行缺陷结论。"
+}

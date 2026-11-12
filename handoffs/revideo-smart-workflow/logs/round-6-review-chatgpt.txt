@@ -1,0 +1,45 @@
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 6,
+  "reviewed_head_sha": "815611570d7749e3ed11f84833c791cf02f24a66",
+  "decision": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "F-009",
+      "severity": "P1",
+      "description": "采样帧已由此前基线持久化，但本轮仅增加测试。局部窗口特征仍被反复扫描与计算，没有实现窗口缓存，也没有验证跨进程加载后的局部特征正确性。",
+      "file": "scripts/smart_match.py",
+      "line": 32,
+      "evidence": "第32行对每个窗口重新扫描 all_frames，第35行重新调用 extract_features。没有缓存机制。scripts/material_index.py 第194行已经保存 sampled_frames，且该实现存在于上轮基线。",
+      "fix_steps": [
+        "scripts/smart_match.py → enumerate_windows → 实现按 source_fingerprint、窗口起止时间和采样配置索引的局部特征缓存。",
+        "scripts/smart_match.py → enumerate_windows → 重复查询相同窗口时复用计算结果；素材指纹改变时使旧缓存失效。",
+        "scripts/material_index.py → load_index → 确保重新加载后保留完整 sampled_frames，并能支持独立窗口特征计算。",
+        "tests/test_smart_index.py → 新增跨进程重新加载索引后，不同运动时段具有不同局部特征的测试。",
+        "tests/test_smart_match.py → 新增缓存命中、缓存失效与重复调用结果一致性测试。"
+      ],
+      "regression_test": "test_loaded_index_preserves_distinct_window_features、test_window_cache_hit_avoids_recomputation、test_window_cache_invalidates_on_fingerprint_change",
+      "introduced_by_fix": false
+    },
+    {
+      "id": "F-010",
+      "severity": "P1",
+      "description": "局部特征提取输出 dominant_direction，但候选评分读取 motion_direction，导致窗口真实运动方向被错误回退为 static。",
+      "file": "scripts/smart_match.py",
+      "line": 65,
+      "evidence": "scripts/material_index.py 第168行输出 dominant_direction；scripts/smart_match.py 第35行直接将 extract_features 的结果作为 local_feats；第65行却读取 motion_direction，不存在时返回 static。",
+      "fix_steps": [
+        "scripts/material_index.py → extract_features → 定义统一的局部与全局特征字段契约。",
+        "scripts/smart_match.py → enumerate_windows → 将局部特征规范化为评分器使用的字段格式。",
+        "scripts/smart_match.py → score_candidate → 对方向字段使用统一 Schema，避免静默回退掩盖字段不兼容。",
+        "tests/test_smart_match.py → 构造真实左移、右移窗口，验证目标方向相符时评分高于相反方向。"
+      ],
+      "regression_test": "test_local_motion_direction_is_preserved、test_direction_match_prefers_correct_window",
+      "introduced_by_fix": false
+    }
+  ],
+  "next_action": "Round 6 审查完成，结论 CHANGES_REQUESTED。F-009 尚未完全修复，应在现有基线上完成局部窗口缓存和跨进程测试。F-010 为新发现的 P1，尚未获得用户选择授权。执行端须补充真实测试日志和与提交 SHA 绑定的证据。未经用户明确授权，不得自动修改其他 finding 或继续推送。"
+}
+
+```

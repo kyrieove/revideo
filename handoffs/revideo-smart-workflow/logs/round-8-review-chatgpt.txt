@@ -1,0 +1,45 @@
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 8,
+  "reviewed_head_sha": "b4d4d64ca7074c0c7618ab1217f63d9bf966f40e",
+  "decision": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "F-011",
+      "severity": "P1",
+      "description": "空指纹素材的基本缓存隔离已经修复，但 sample_version 仅依据采样帧数量及首末时间戳生成。采样帧中间内容改变而数量、首末时间不变时，缓存键保持相同，导致局部特征错误复用。",
+      "file": "scripts/smart_match.py",
+      "line": 47,
+      "evidence": "第47行 sample_version = f'frames_{len(all_frames)}_{all_frames[0].get(\"timestamp\",0):.2f}_{all_frames[-1].get(\"timestamp\",0):.2f}'。该版本号不包含采样帧的 luminance、motion、direction 等内容。第55行缓存键依赖此版本号，第58–59行命中时直接读取缓存，不重新计算。",
+      "fix_steps": [
+        "scripts/smart_match.py → enumerate_windows → 使用稳定哈希计算采样版本，包括采样帧时间戳、亮度、运动强度、运动方向以及实际采样配置；内容改变必须生成不同版本。",
+        "scripts/smart_match.py → 缓存键 → 保留 FEATURE_ALGO_VERSION 和窗口边界，并保证素材身份与采样内容版本能够共同确定特征数据。",
+        "tests/test_smart_match.py → 新增保持帧数及首末时间不变、只修改中间帧 motion 或 direction 的回归测试。必须检查第二次调用重新执行 extract_features。",
+        "tests/test_smart_match.py → 保留现有空指纹素材隔离和正常缓存命中测试。"
+      ],
+      "regression_test": "test_middle_sample_change_invalidates_cache：首次缓存后仅修改中间采样帧，断言 extract_features 被重新调用且局部运动特征发生改变；test_unchanged_samples_hit_cache：相同输入再次调用时不重新计算。",
+      "introduced_by_fix": true
+    },
+    {
+      "id": "F-012",
+      "severity": "P1",
+      "description": "测试文件及结果已纳入版本控制，但媒体测试仍依赖本机绝对路径，无法在干净检出环境独立复现。测试报告对应的 SHA 不是当前提交，且声称39项单测通过，而当前源码实际包含40个测试方法。",
+      "file": "tools/check_revideo.py",
+      "line": 8,
+      "evidence": "第8–9行硬编码 D:/2/dev/claude-video 与 C:/Users/ASUS/.claude/skills/revideo。tools/test_revideo_media.py 第13行、tools/test_revideo_reference.py 第13行也读取外部源码。TEST_RESULTS.json 第3行记录 tested_sha=1d43759e05e91e9b9475a232fa29ff2eb43df748，而本轮 head=b4d4d64ca7074c0c7618ab1217f63d9bf966f40e；JSON记录39项单测，当前tests目录实际有40个测试方法。",
+      "fix_steps": [
+        "tools/check_revideo.py → 使用 Path(__file__).resolve().parents[1] 定位仓库根目录；默认测试仓库自身的 scripts 目录。部署一致性检查改为显式可选路径，并在缺少外部部署目录时给出明确状态，不得依赖固定开发机路径。",
+        "tools/test_revideo_media.py、tools/test_revideo_reference.py、tools/test_revideo.py → 使用仓库相对路径加载受测代码；真正依赖外部媒体的测试必须通过配置或环境变量接收路径，并与独立可运行测试分离。",
+        "执行端 → 在当前提交的干净检出环境中运行完整单元测试与媒体测试，保存原始 stdout、stderr、退出码、实际测试数量及运行环境。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.json → 将 tested_sha 绑定到实际运行的源码提交；若测试后只生成证据提交，应分别明确源码 SHA、测试 SHA 和证据提交 SHA，并核对相关代码文件没有改变。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 添加 Round 8 实际运行记录，说明40项测试是否全部执行，并引用可验证日志。"
+      ],
+      "regression_test": "从干净检出的指定源码版本运行 python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v，以及 python -X utf8 tools/check_revideo.py --fast。检查退出码、真实测试数量、媒体测试结果和证据 SHA 一致；不得要求固定 D:/2/dev 或 C:/Users/ASUS 路径存在。",
+      "introduced_by_fix": false
+    }
+  ],
+  "next_action": "Round 8 复审完成，decision=CHANGES_REQUESTED。F-011 已修复空指纹缓存碰撞，但采样版本指纹仍无法识别中间帧内容变化。F-012 已将测试工具和报告纳入仓库，但独立运行路径与测试提交绑定仍未完成。建议用户选定 F-011、F-012 继续修复，首先为中间帧变化构造失败测试，然后消除测试入口的本机绝对路径依赖，并在精确源码版本上重新执行及保存测试证据。未经用户选择，不自动修改或推送。"
+}
+
+```

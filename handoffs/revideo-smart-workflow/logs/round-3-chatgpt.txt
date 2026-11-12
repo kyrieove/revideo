@@ -1,0 +1,116 @@
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 3,
+  "reviewed_head_sha": "482e1adb80ce41b8b4bdda9bdf4fbc567006d21a",
+  "decision": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "F-002",
+      "severity": "P0",
+      "description": "人工审批闭环仍未成立。approve() 允许 decisions=None；单镜 confirmed 缺失时默认 True；没有验证候选、源事件表和素材身份。上一轮 P0 未修复。",
+      "file": "scripts/smart_workflow.py",
+      "line": 36,
+      "evidence": "第36行 decisions: Optional[Dict[str, Any]] = None；第40行 if decisions is not None；第44行 dec_map[sid].get('confirmed', True)；第47–55行无条件生成 approved。",
+      "fix_steps": [
+        "scripts/smart_workflow.py → approve → 改为 approve(proposed_events, decisions, candidates, source_events, index)，取消 decisions 的默认值。缺少任何参数或决策时拒绝审批。",
+        "scripts/smart_schema.py → validate_decisions → 新增强校验：schema_version=1；candidates_sha256 与候选表内容一致；source_events_sha256 与源事件表一致；每个镜头恰好一个决策；confirmed 必须显式为 True；selected_candidate_id 必须属于该镜头合法候选。",
+        "scripts/smart_workflow.py → approve → 检查实际 material、material_in 与所选 candidate_id 对应；校验素材 source_fingerprint 与索引一致。素材缺失、变更、候选失效、缺少确认或镜头变化时返回独立错误码。",
+        "scripts/smart_workflow.py → approve → 复刻模式必须比较源事件表与批准方案的 fps、fps_str、frames、全部 shot id/start/end；仅匹配后才计算 approval_sha256。原创模式对生成时间轴进行同等合法性检查。",
+        "scripts/remake.py → validate_smart_approval → 同时调用 validate_smart_workflow，拒绝未知 schema_version。保持现有导入失败必阻断机制。",
+        "tests/test_remake_gate.py → 旧测试 test_rejects_tampered_approval 不再调用 approve(ev) 直接造审批；改用完整合法审批 fixture，并保留修改后拒绝的断言。",
+        "tests/test_smart_approval.py → 增加缺失决策、confirmed 缺失、伪造候选 ID、素材变更、源事件表变更、未知版本及 CLI 导入路径测试。先在当前 SHA 观察失败。"
+      ],
+      "regression_test": "tests/test_smart_approval.py::test_rejects_missing_decisions、test_rejects_implicit_confirmation、test_rejects_candidate_mismatch、test_rejects_stale_asset、test_rejects_changed_reference_timeline；全部负向测试必须拒绝，合法完整决策必须通过。",
+      "introduced_by_fix": false
+    },
+    {
+      "id": "F-003",
+      "severity": "P1",
+      "description": "新增 FFmpeg 调用后仍没有真实视频特征提取。采样数取决于原始字节长度，但亮度、运动方向、景别和运动值仍是固定或虚构数据；无效特征还会被标记为已审查。",
+      "file": "scripts/material_index.py",
+      "line": 80,
+      "evidence": "第80–89行按 len(raw)//10000 生成固定 luminance=0.5 与 motion=0.1*(i%5)；第108–110行固定 direction/brightness；第135–136行固定 scale_type='medium'、有效素材 needs_review=False。",
+      "fix_steps": [
+        "scripts/material_index.py → sample_asset → 统一 FFmpeg 输出为固定尺寸 256x144 灰度帧，并按 256*144 字节完整读取每帧；禁止使用 len(raw)//10000 推算帧数。保存真实时间戳和帧数据，检查解码退出码及不完整尾帧。",
+        "scripts/material_index.py → extract_features → 使用真实像素计算每帧亮度、Laplacian 清晰度、相邻帧差、光流方向和运动强度。使用真实测量结果生成能量曲线与动作峰值；不能测量的维度设 unknown。",
+        "scripts/material_index.py → build_index → 有效素材必须实际完成至少一帧解码。解码失败设置 valid=False 与 quality_flags，不能继续写入假特征。",
+        "scripts/material_index.py → build_index → 未经过可靠模型或人工标注的 scale_type 保持 unknown，needs_review=True；增加 size、mtime_ns、内容 SHA-256 采样组成 source_fingerprint，并用于索引失效检查。",
+        "tests/test_smart_index.py → 使用 FFmpeg 创建不同亮度、不同运动方向与解码失败素材，验证特征值和 quality_flags。用素材变更测试缓存失效。"
+      ],
+      "regression_test": "tests/test_smart_index.py::test_black_white_frames_have_different_brightness、test_opposite_motion_directions_differ、test_decode_failure_is_invalid、test_unknown_scale_requires_review、test_source_change_invalidates_index；当前固定值实现必须失败。",
+      "introduced_by_fix": false
+    },
+    {
+      "id": "F-004",
+      "severity": "P1",
+      "description": "全局组接仍然是贪心算法，不是波束搜索；smart_match 的原有固定评分和固定30fps问题也未修复。新增 compose() 未使用 beam_width，不能实现真正的全片最优组接。",
+      "file": "scripts/smart_compose.py",
+      "line": 37,
+      "evidence": "第37–49行直接排序并取 top_candidates[0]；第11行 beam_width 参数没有被使用。scripts/smart_match.py 第48行仍 return 0.75，第63行仍 return []，第72行仍 fps=30.0。",
+      "fix_steps": [
+        "scripts/smart_match.py → score_candidate → 按真实特征计算母题、动作、方向、颜色、能量和景别分数；只对存在可靠测量值的维度归一化，返回 coverage、reason_codes 和 needs_review。缺失核心语义时不得虚构高分。",
+        "scripts/smart_match.py → enumerate_windows → 使用 fps_str 和镜头真实帧数计算候选时长，检查素材实际可解码帧数和转场余量；移除任意截取前10个窗口造成的候选覆盖不足。",
+        "scripts/smart_match.py → propose → 遍历完整合法素材候选后按分数排序，不得提前按媒体文件遍历顺序截断；输出 missing_slots 与排除原因。",
+        "scripts/smart_compose.py → compose → 实现真正的 beam search：每个槽位扩展全部有效候选，累计单镜分数、前后镜头衔接分数与全局重复惩罚；每轮按总分和 candidate_id 序列稳定排序，保留 beam_width 条部分路径。",
+        "scripts/smart_compose.py → compose → 返回最多 top_k 套完整序列及各镜头分项分数，不能只返回一个贪心结果；在参考模式中严格保持全部 start/end 不变。",
+        "tests/test_smart_match.py 与 tests/test_smart_compose.py → 验证真实差异评分、60fps时长、全局最优优于逐镜贪心以及多方案确定性排序。"
+      ],
+      "regression_test": "tests/test_smart_match.py::test_different_visual_features_produce_different_scores、test_60fps_window_duration；tests/test_smart_compose.py::test_beam_search_beats_greedy、test_beam_width_changes_search、test_deterministic_top_three；旧版应失败。",
+      "introduced_by_fix": false
+    },
+    {
+      "id": "F-005",
+      "severity": "P1",
+      "description": "预览 HTML 已增加媒体内嵌和 HTML 转义，但仅在外部已存在 draft_video_path 时播放。函数没有生成草稿，缺失文件时静默输出纯文字页面，也没有验证帧数、切点和时间线一致性。",
+      "file": "scripts/smart_preview.py",
+      "line": 15,
+      "evidence": "第15行仅在 draft_video_path 存在时读取媒体；第17–19行仅内嵌现成文件；第20–21行异常后降级为文字；第39–54行列出镜头文字，没有逐镜播放或候选 A/B 切换。",
+      "fix_steps": [
+        "scripts/smart_preview.py → generate_preview → 调用共享草稿渲染接口生成低分辨率视频，或显式要求提供已经验证的草稿文件；不能在无可播放媒体时报告预览成功。",
+        "scripts/smart_preview.py → validate_draft → 使用 ffprobe 检查草稿 fps、总帧数、媒体编码与事件表一致；检查每个镜头预期边界，拒绝错误草稿。",
+        "scripts/smart_preview.py → generate_preview → 保留现有 html.escape；新增播放、逐镜定位、循环与候选 A/B 对比。限制内嵌文件大小，非 MP4 文件不得声明为 video/mp4。",
+        "scripts/remake.py → 添加显式 draft-preview 渲染路径，与正式渲染复用同一时间线计算；草稿许可不得绕过正式审批门禁。",
+        "tests/test_smart_preview.py → 验证无媒体失败、真实视频播放、错误帧数拒绝、HTML 转义、离线自包含和镜头边界。"
+      ],
+      "regression_test": "tests/test_smart_preview.py::test_missing_draft_is_not_success、test_preview_contains_real_video、test_rejects_wrong_frame_count、test_html_escapes_material_path、test_shot_navigation_matches_timeline。",
+      "introduced_by_fix": false
+    },
+    {
+      "id": "F-006",
+      "severity": "P1",
+      "description": "原创时间轴已新增，但无 BGM 的场景会被错误标记为 bgm，target_frames 可能被超过或无法覆盖，空素材池也会生成镜头。正式渲染器仍强制要求音轨，原创模式无法端到端使用。",
+      "file": "scripts/smart_timeline.py",
+      "line": 18,
+      "evidence": "第18–21行在没有音乐时人为生成非空 beat_frames；第45–46行再用该列表决定 audio.mode，导致无 BGM 被标为 bgm。第36–37行在追加镜头后才判断 target_frames。scripts/remake.py 第90–92行仍强制要求音源。",
+      "fix_steps": [
+        "scripts/smart_timeline.py → generate_original_timeline → 增加明确的 bgm_path 或 audio_mode 输入，音频有无必须来自实际用户输入，不得通过自动生成的节拍数组推断。",
+        "scripts/smart_timeline.py → generate_original_timeline → 对 target_frames 强制精确覆盖；切点必须严格递增，最后一个 end 等于目标帧数，镜头区间连续且全部为正整数。",
+        "scripts/smart_timeline.py → generate_original_timeline → 真实使用 highlights 的有效长度、精彩程度和动作位置；没有可用素材时返回明确错误或缺失报告，不能凭空生成四镜头。",
+        "scripts/smart_timeline.py → generate_original_timeline → 输出可被现有渲染器消费的 fps、fps_str、frames、size、shots、mode、audio 等完整契约；不编造 reference 路径。",
+        "scripts/remake.py → main → 对 mode=original 且 audio.mode=none 使用纯视频映射及 -an；在渲染完成后允许没有 audio_out，同时保留视频帧数和帧率校验。reference 模式维持原有音源要求。",
+        "tests/test_smart_dual_mode.py 与 tests/test_original_e2e.py → 增加无 BGM、精确100帧、非单调节拍、空素材池和真实无音频视频输出测试。"
+      ],
+      "regression_test": "tests/test_smart_dual_mode.py::test_no_bgm_sets_audio_none、test_target_frames_exactly_100、test_rejects_nonmonotonic_beats、test_empty_highlights_reports_missing；tests/test_original_e2e.py::test_no_bgm_renders_video_without_audio_stream。",
+      "introduced_by_fix": true
+    },
+    {
+      "id": "F-007",
+      "severity": "P1",
+      "description": "没有完成所要求的端到端回归测试。新增测试只检查时间轴样例和重复执行确定性，没有测试实际解码、审批、全局匹配、草稿及正式视频输出。提交内测试证据仍与本轮声明不一致。",
+      "file": "tests/test_smart_dual_mode.py",
+      "line": 17,
+      "evidence": "第17–33行的 compose 确定性测试仅比较同输入两次执行选择相同；第7–15行只验证三个固定时间轴槽位。GitHub 指定 SHA 中 TEST_RESULTS.md 仍为 NOT RUN，TEST_RESULTS.json 不存在，GitHub check runs 为0。",
+      "fix_steps": [
+        "tests/test_smart_dual_mode.py → 用真实边界条件替换或补充单一样例，包括时长超限、无音乐、素材不足和非法节拍。",
+        "tests/test_smart_workflow_e2e.py → 使用 FFmpeg 在临时目录创建含参考音频的样例视频、多个不同运动与亮度的视频素材，完整运行 index、propose、compose、人工决策、approve、preview 与 remake。",
+        "tests/test_original_e2e.py → 以无参考片、无 BGM 场景执行原创时间轴、全局组接、审批与视频输出，用 ffprobe 验证帧数、帧率及无音频流。",
+        "tests/test_remake_gate.py → 增加从仓库根目录执行 python scripts/remake.py 的子进程测试，验证伪造审批指纹被拒绝；确保上一轮 F-001 的修复具备运行时回归证据。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 在实际运行后记录命令、退出码、被测 SHA、每项测试原始输出、测试环境及产物；提供 TEST_RESULTS.json 与其实际 SHA-256，或明确注明未生成。",
+        "每项新增 P0/P1 测试先在当前 482e1adb SHA 上证明失败，随后在修复提交上证明通过；不能以导入成功替代功能验收。"
+      ],
+      "regression_test": "tests/test_smart_workflow_e2e.py::test_reference_mode_end_to_end；tests/test_original_e2e.py::test_original_mode_end_to_end；tests/test_remake_gate.py::test_cli_rejects_forged_approval_without_pythonpath；必须有 FFmpeg/ffprobe 实际执行证据。",
+      "introduced_by_fix": false
+    }
+  ],
+  "next_action": "Round 3 独立复审完成，decision=CHANGES_REQUESTED。已核验 482e1adb 是 4d4f67e 的直接后续提交，且远端可读取。F-001 的静默导入绕过已在代码层面修复，但缺少 CLI 回归测试。F-002、F-004 未修复；F-003、F-005、F-006、F-007 只完成部分工作。建议执行端先等待用户选择本轮 finding；获授权后优先完成 F-002 审批闭环，再处理 F-003 的真实视频特征提取和 F-004 的波束搜索，随后实现 F-006 原创时间轴及无 BGM 渲染、F-005 可播放草稿，最后执行 F-007 端到端测试。所有改动保留在非默认开发分支，保留工作区其他修改；每轮提交新的精确 SHA、旧版失败测试、新版通过测试和可核实的证据。不自动推送、创建 PR 或把本次审查判定视为用户实施授权。"
+}

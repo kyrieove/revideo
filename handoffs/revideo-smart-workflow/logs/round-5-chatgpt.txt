@@ -1,0 +1,27 @@
+# 审查结论
+
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 5,
+  "reviewed_head_sha": "c039a381a7ae189e665ce96754ec120b0b058db3",
+  "decision": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "F-009",
+      "severity": "P1",
+      "description": "候选窗口采样提取的局部特征尚未在 build_index 中随素材持久化存储，导致多进程加载索引时局部特征回退至全局平均值。",
+      "file": "scripts/smart_match.py",
+      "line": 32,
+      "evidence": "all_frames = asset.get('sampled_frames', []) 在反序列化持久化 index.json 时缺失，导致回退到全局特征",
+      "fix_steps": [
+        "scripts/material_index.py → build_index: 将 sampled_frames 结构序列化持久化到 index.json",
+        "scripts/smart_match.py → enumerate_windows: 优化局部特征切片读取并做缓存"
+      ],
+      "regression_test": "tests/test_smart_index.py::test_build_and_load_index_persists_sampled_frames",
+      "introduced_by_fix": false
+    }
+  ],
+  "next_action": "Round 5 已确认 F-008（原创模式绕过门禁）与 F-002（强制关联摘要与物理文件哈希）闭环修复。新提议 F-009 要求将切片采样帧完整持久化到 index.json。进入第 6 轮整改。"
+}
+```

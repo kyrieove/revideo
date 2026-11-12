@@ -79,8 +79,16 @@ def generate_rhythm_inspector(video_path: str, events: Dict[str, Any], out_path:
         total_frames = max(s.get("end", 0) for s in shots_raw)
     total_dur = total_frames / fps if fps > 0 else 0.0
 
-    # 1. 整理镜头与切点数据
+    # 1. 统计素材使用频次与场景语义
+    material_usage = {}
+    for s in shots_raw:
+        m = s.get("material") or s.get("path") or ""
+        m_name = Path(m).name if m else ""
+        if m_name:
+            material_usage[m_name] = material_usage.get(m_name, 0) + 1
+
     shots_data = []
+    prev_mat = None
     for idx, s in enumerate(shots_raw, 1):
         f_in = s.get("start", 0)
         f_out = s.get("end", f_in + 1)
@@ -92,6 +100,15 @@ def generate_rhythm_inspector(video_path: str, events: Dict[str, Any], out_path:
         diff_f = (f_in - closest_drum["f"]) if closest_drum else 0
         diff_ms = round((diff_f / fps) * 1000, 1) if fps > 0 else 0.0
 
+        m = s.get("material") or s.get("path") or ""
+        m_name = Path(m).name if m else ""
+        u_count = material_usage.get(m_name, 1)
+        consecutive = (prev_mat == m_name) and (m_name != "")
+        prev_mat = m_name
+
+        s_scene = s.get("features", {}).get("dominant_scene") or s.get("scene") or "风光"
+        ref_s = s.get("reference", {}).get("scene") or s.get("target_scene") or "风光"
+
         shots_data.append({
             "index": idx,
             "id": s.get("id", f"shot_{idx:03d}"),
@@ -102,7 +119,12 @@ def generate_rhythm_inspector(video_path: str, events: Dict[str, Any], out_path:
             "t_in": round(t_in, 3),
             "t_out": round(t_out, 3),
             "diff_frames": diff_f,
-            "diff_ms": diff_ms
+            "diff_ms": diff_ms,
+            "material": m_name,
+            "use_count": u_count,
+            "consecutive": consecutive,
+            "source_scene": s_scene,
+            "ref_scene": ref_s
         })
 
     # 2. 提取波形与动作曲线
@@ -389,6 +411,12 @@ canvas#flowCanvas {{ width: 100%; height: 100%; display: block; }}
         <div class="pill-dot" id="pillDot"></div>
         <span id="curShotLabel">Shot #01 · 正在播放</span>
       </div>
+      <div class="status-pill" id="semanticPill" style="font-size: 11px; color: #60a5fa;">
+        <span id="curSemanticLabel">场景: [参考: 风光] ↔ [成片: 风光]</span>
+      </div>
+      <div class="status-pill" id="matPill" style="font-size: 11px; color: var(--text-muted);">
+        <span id="curMatLabel">素材: 原画</span>
+      </div>
       <div class="status-pill" style="font-size: 11px; color: var(--text-muted);">
         <span id="curRhythmStatus">离最近鼓点偏差: 0 帧</span>
       </div>
@@ -427,6 +455,9 @@ const txtTime = document.getElementById('txtTime');
 const txtFrame = document.getElementById('txtFrame');
 const curShotLabel = document.getElementById('curShotLabel');
 const curRhythmStatus = document.getElementById('curRhythmStatus');
+const curSemanticLabel = document.getElementById('curSemanticLabel');
+const curMatLabel = document.getElementById('curMatLabel');
+const matPill = document.getElementById('matPill');
 const hitIndicator = document.getElementById('hitIndicator');
 const pillDot = document.getElementById('pillDot');
 
@@ -629,24 +660,44 @@ function updateLoop() {{
     const sign = diff > 0 ? '+' : '';
     curRhythmStatus.textContent = `离最近鼓点偏差: ${{sign}}${{diff}} 帧 (${{sign}}${{curShot.diff_ms}} ms)`;
     pillDot.style.background = Math.abs(diff) <= 1 ? '#10b981' : (Math.abs(diff) <= 2 ? '#34d399' : '#f59e0b');
+
+    if (curSemanticLabel) {{
+      curSemanticLabel.textContent = `场景: [参考: ${{curShot.ref_scene || '风光'}}] ↔ [成片: ${{curShot.source_scene || '风光'}}]`;
+    }}
+    if (curMatLabel && curShot.material) {{
+      const u = curShot.use_count || 1;
+      const warn = u > 2 ? ' ⚠️超频复用' : (curShot.consecutive ? ' ❌连续同素材' : '');
+      curMatLabel.textContent = `素材: ${{curShot.material}} (全片${{u}}次)${{warn}}`;
+      if (matPill) {{
+        matPill.style.color = (u > 2 || curShot.consecutive) ? '#ef4444' : (u === 1 ? '#34d399' : '#fbbf24');
+      }}
+    }}
   }}
 
   requestAnimationFrame(updateLoop);
 }}
 requestAnimationFrame(updateLoop);
 
-// 点击/拖拽时间线跳转
+// 点击/拖拽/触摸时间线跳转
 let isDragging = false;
-function seekFromMouse(e) {{
+function getEventX(e) {{
+  return (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+}}
+function seekFromEvent(e) {{
   const rect = scrollerBox.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
+  const clientX = getEventX(e);
+  const clickX = clientX - rect.left;
   const deltaX = clickX - (rect.width / 2);
   const targetT = video.currentTime + (deltaX / pixelsPerSecond);
   video.currentTime = Math.max(0, Math.min(totalDur, targetT));
 }}
-scrollerBox.addEventListener('mousedown', (e) => {{ isDragging = true; seekFromMouse(e); }});
-window.addEventListener('mousemove', (e) => {{ if (isDragging) seekFromMouse(e); }});
+scrollerBox.addEventListener('mousedown', (e) => {{ isDragging = true; seekFromEvent(e); }});
+window.addEventListener('mousemove', (e) => {{ if (isDragging) seekFromEvent(e); }});
 window.addEventListener('mouseup', () => {{ isDragging = false; }});
+
+scrollerBox.addEventListener('touchstart', (e) => {{ isDragging = true; seekFromEvent(e); }}, {{ passive: true }});
+window.addEventListener('touchmove', (e) => {{ if (isDragging) seekFromEvent(e); }}, {{ passive: true }});
+window.addEventListener('touchend', () => {{ isDragging = false; }});
 
 // 播放控制
 const btnPlay = document.getElementById('btnPlay');

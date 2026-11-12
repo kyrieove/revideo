@@ -1,0 +1,28 @@
+{
+  "shots": [
+    {
+      "id": 1,
+      "start": 0,
+      "end": 15,
+      "material": "../clips/shot_a.mp4",
+      "material_in": 2.4,
+      "selection": {
+        "asset_id": "asset-001",
+        "candidate_id": "asset-001@2.4",
+        "score": 0.84,
+        "reason_codes": [
+          "energy_match",
+          "direction_match"
+        ],
+        "needs_review": true,
+        "human_override": false
+      }
+    }
+  ],
+  "smart_workflow": {
+    "schema_version": 1,
+    "status": "proposed",
+    "source_events_sha256": "...",
+    "approval_sha256": null
+  }
+}

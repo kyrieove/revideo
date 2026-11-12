@@ -1,0 +1,31 @@
+```json:chatgpt-review
+{
+  "task_id": "revideo-smart-workflow",
+  "round": 9,
+  "reviewed_head_sha": "0060fc9de9affe0fe65a837ff6b33ad641a6422a",
+  "decision": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "F-012",
+      "severity": "P1",
+      "description": "测试入口已改用仓库相对路径，但实际媒体和参考复核测试仍加载开发机绝对路径下的外部源码，无法保证干净检出环境可运行或测试对象与指定SHA一致。同时TEST_RESULTS.json记录的tested_sha不等于本轮提交，且该SHA无法在远端解析。",
+      "file": "tools/test_revideo_media.py",
+      "line": 13,
+      "evidence": "tools/test_revideo_media.py:13 使用 ROOT=Path('D:/2/dev/claude-video/tools/revideo')；tools/test_revideo_reference.py:13 同样硬编码外部路径；tools/test_revideo.py:11 使用 C:/Users/ASUS/.claude/skills/revideo/scripts。tools/check_revideo.py:29-31 直接调用上述子测试，未传递仓库源码目录。handoffs/revideo-smart-workflow/TEST_RESULTS.json:3 记录 tested_sha=0f1462e6513c24131a36f1c03fc60e4d3674a630，而本轮SHA为0060fc9de9affe0fe65a837ff6b33ad641a6422a。",
+      "fix_steps": [
+        "tools/test_revideo_media.py → 将 ROOT 改为 Path(__file__).resolve().parents[1] / 'scripts'，默认加载当前仓库中的实际受测源码。",
+        "tools/test_revideo_reference.py → 同步改为仓库相对路径，所有 reference_review 模块加载、CLI调用和测试产物均使用相同源码根目录。",
+        "tools/test_revideo.py → 默认使用仓库 scripts 目录；如需测试部署副本，单独接受显式参数，不得在默认测试中硬编码用户目录。",
+        "tools/check_revideo.py → 确保子测试均使用同一 REPO_ROOT。部署一致性检查与源码单元测试分离；未启用 --with-deploy 时不得读取外部部署目录。",
+        "tests → 增加干净检出环境测试，检查不存在 D:/2/dev 和 C:/Users/ASUS 目录时媒体测试仍能导入仓库源码并运行。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.json → 记录真实测试源码提交SHA、实际命令、退出码、测试数量和原始日志位置。若证据与源码分两次提交，分别记录tested_source_sha与evidence_commit_sha，不要求在提交内容中自引用其自身SHA。",
+        "执行端 → 在明确的源码版本上重新运行41项单元测试和28项媒体测试。保存原始stdout、stderr与环境信息，不得直接沿用上轮成功摘要。"
+      ],
+      "regression_test": "test_clean_checkout_runs_media_suite：在没有开发机绝对路径的环境中运行 python -X utf8 tools/check_revideo.py --fast，确认子测试实际加载当前仓库scripts；test_evidence_matches_tested_source：验证测试日志对应可解析的源码SHA，单元测试及媒体测试退出码均为0，测试数量与报告一致。",
+      "introduced_by_fix": false
+    }
+  ],
+  "next_action": "Round 9 复审完成。F-011 的采样帧内容摘要逻辑已通过源码复审。F-012 尚未修复，阻断本轮验收。建议用户仅选择 F-012 继续整改，要求执行端先修复三个子测试中的绝对路径，再在干净检出环境运行完整测试，提交能够追溯到实际源码版本的证据。未经授权不得修改其他finding或自动推送。"
+}
+
+```
