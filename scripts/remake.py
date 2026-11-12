@@ -26,7 +26,24 @@ def probe(path, count=False):
         '-show_streams', '-show_format', '-of', 'json', str(path)]))
 
 
+def validate_smart_approval(ev):
+    """检测到 smart_workflow 时验证审批门禁与防篡改指纹；无 smart_workflow 的旧人工事件表保持向后兼容。"""
+    if 'smart_workflow' not in ev:
+        return
+    sw = ev['smart_workflow']
+    if sw.get('status') != 'approved':
+        raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
+    try:
+        from scripts.smart_schema import fingerprint_render_plan
+        expected = fingerprint_render_plan(ev)
+        if sw.get('approval_sha256') != expected:
+            raise ValueError('SMART_WORKFLOW_APPROVAL_STALE')
+    except ImportError:
+        pass
+
+
 def validate_timeline(ev):
+    validate_smart_approval(ev)
     frames, fps = ev['frames'], ev['fps']
     if type(frames) is not int or frames <= 0 or not math.isfinite(fps) or fps <= 0:
         raise ValueError('frames 必须为正整数，fps 必须有限且为正')
