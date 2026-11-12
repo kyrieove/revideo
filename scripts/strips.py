@@ -6,9 +6,10 @@ import json
 import math
 import subprocess
 import sys
+import os
 from pathlib import Path
 
-VIEW = Path('C:/Users/ASUS/.claude/skills/video-use/helpers/timeline_view.py')
+VIEW = Path(os.environ.get('TIMELINE_VIEW_PY', str(Path.home() / '.claude/skills/video-use/helpers/timeline_view.py')))
 DONE = ('verified', 'not_applicable', 'deviation')
 
 

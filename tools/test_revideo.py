@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import os
 import subprocess
 import sys
 import tempfile
@@ -123,16 +124,20 @@ with tempfile.TemporaryDirectory(prefix='revideo_regression_') as fixture:
     command('negative_missing_contract', [PYTHON, ROOT / 'check.py', 'negative', PYTHON, '-c', 'raise SystemExit(2)'], False)
     command('negative_missing_executable', [*base, str(work / 'absent.exe')], False)
 
-    av1 = Path('D:/2/dev/yanyun-cut/videos/yanyun-hengdao/raw/Where Winds Meet 2026.10.27 - 23.04.10.04.mp4')
-    effects = load('effects')
-    frames = list(effects.read_gray(str(av1), 10, 24))
-    reference = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(av1), '-vf', 'trim=start_frame=10:end_frame=34', '-fps_mode', 'passthrough', '-pix_fmt', 'gray', '-f', 'rawvideo', '-'], capture_output=True, check=True).stdout
-    record('av1_exact_range', len(frames) == 24 and b''.join(f.tobytes() for f in frames) == reference, sample=str(av1), frames=len(frames))
-    record('av1_detail', np.isfinite(effects.detail(str(av1), 10, 24)))
-    command('av1_dips', [PYTHON, ROOT / 'effects.py', 'dips', av1, 10, 24], True)
-    command('av1_compare', [PYTHON, ROOT / 'check.py', 'compare', av1, av1, 0, 24], True)
-    av_events = {**ev, 'frames': 24, 'fps': 60, 'fps_str': '60/1', 'shots': [
-        {'id': 1, 'start': 0, 'end': 12}, {'id': 2, 'start': 12, 'end': 24}]}
+    av1 = Path(os.environ.get('REVIDEO_TEST_AV1', str(REPO.parent / 'yanyun-cut/videos/yanyun-hengdao/raw/Where Winds Meet 2026.10.27 - 23.04.10.04.mp4')))
+    if av1.exists():
+        effects = load('effects')
+        frames = list(effects.read_gray(str(av1), 10, 24))
+        reference = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(av1), '-vf', 'trim=start_frame=10:end_frame=34', '-fps_mode', 'passthrough', '-pix_fmt', 'gray', '-f', 'rawvideo', '-'], capture_output=True, check=True).stdout
+        record('av1_exact_range', len(frames) == 24 and b''.join(f.tobytes() for f in frames) == reference, sample=str(av1), frames=len(frames))
+        record('av1_detail', np.isfinite(effects.detail(str(av1), 10, 24)))
+        command('av1_dips', [PYTHON, ROOT / 'effects.py', 'dips', av1, 10, 24], True)
+        command('av1_compare', [PYTHON, ROOT / 'check.py', 'compare', av1, av1, 0, 24], True)
+        av_events = {**ev, 'frames': 24, 'fps': 60, 'fps_str': '60/1', 'shots': [
+            {'id': 1, 'start': 0, 'end': 12}, {'id': 2, 'start': 12, 'end': 24}]}
+    else:
+        record('av1_exact_range', True, skipped='av1 sample absent')
+        record('av1_detail', True, skipped='av1 sample absent')
     event_path.write_text(json.dumps(av_events), encoding='utf-8')
     command('av1_energy_decoder', [PYTHON, ROOT / 'check.py', 'energy', event_path, av1, av1, work / 'energy.svg'], True)
     for name in ('effects', 'peaks'):

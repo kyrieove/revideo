@@ -110,7 +110,8 @@ def ssim(ref, new):
 
 
 def side(ref, new, out):
-    ff = "fontfile='C\\:/Windows/Fonts/arial.ttf':" if os.path.exists('C:/Windows/Fonts/arial.ttf') else ''
+    win_font = os.path.join(os.environ.get('WINDIR', 'C:/Windows'), 'Fonts', 'arial.ttf')
+    ff = f"fontfile='{win_font.replace(':', chr(92) + ':')}':" if os.path.exists(win_font) else ''
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', ref, '-i', new, '-filter_complex',
                     f'[0:v]scale=-2:720,drawtext={ff}text=REF %{{n}}:x=10:y=10:fontsize=28:fontcolor=yellow:box=1:boxcolor=black[a];'
                     f'[1:v]scale=-2:720,drawtext={ff}text=NEW %{{n}}:x=10:y=10:fontsize=28:fontcolor=yellow:box=1:boxcolor=black[b];'

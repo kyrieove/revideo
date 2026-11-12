@@ -7,7 +7,7 @@ import os
 import shutil
 import subprocess
 
-DEFAULT_ENGINE = "D:/2/dev/rife-ncnn-vulkan/bin/rife-ncnn-vulkan-20221029-windows"
+DEFAULT_ENGINE = os.environ.get("RIFE_ENGINE", "rife-ncnn-vulkan")
 
 
 def sample_curve(src_mp4, sample_times, n_frames, crop=None, tmp_dir=None, fps=30, engine=DEFAULT_ENGINE):
