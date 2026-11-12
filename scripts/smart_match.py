@@ -1,6 +1,7 @@
 """smart_match.py - 镜头审美打分、波束搜索候选装配与自主时间轴生成 (M2)"""
 
 from fractions import Fraction
+from scripts.gap_analyzer import semantic_segment_verified
 from typing import Any, Dict, List, Optional, Tuple
 
 DEFAULT_WEIGHTS = {
@@ -139,7 +140,7 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
             ):
                 local_feats.pop(field, None)
         for seg in segments if isinstance(segments, list) else []:
-            if not isinstance(seg, dict):
+            if not semantic_segment_verified(seg):
                 continue
             try:
                 s0, s1 = float(seg["start"]), float(seg["end"])
