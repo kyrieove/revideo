@@ -1,0 +1,27 @@
+{
+ "version": 1,
+ "effects": {
+  "directional_motion_blur": {
+   "script": "motion_blur.py",
+   "params": {
+    "input": "视频路径",
+    "output": "输出路径",
+    "start": "起始帧（含）",
+    "end": "结束帧（不含）",
+    "angle": "模糊方向，度，y 向下；千斤坠参考实测 42°",
+    "length": "模糊长度，像素，0–130；超过 130 拒绝",
+    "radial": "可选；按到画面中心距离渐入模糊"
+   },
+   "reference": {
+    "source": "videos/_refs/yitian-7705691401014627624/video.mp4",
+    "frames_half_open": [173, 179],
+    "angle": 42,
+    "note": "三圈结尾的强模糊；长度由清晰度比 60·(-log10 ratio) 得出，上限 130"
+   },
+   "negative": {
+    "params": {"length": 200},
+    "expected": "FAIL_FX，长度超过 130，主体糊成一片"
+   }
+  }
+ }
+}

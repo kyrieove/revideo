@@ -1,0 +1,21 @@
+interface:
+  display_name: "Revideo 视频逐帧复刻"
+  short_description: "同一段音乐、逐帧照搬参考片切点和镜头内动作，只换素材完成同款卡点视频复刻。"
+  default_prompt: "用 /revideo 复刻这条参考视频，生成 events.json 并完成新素材替换与验收。"
+compatibility:
+  canonical_format: "agent-skill-v1"
+  adapter_targets:
+    - "claude"
+    - "codex"
+  activation:
+    mode: "manual_or_trigger"
+  execution:
+    context: "inline"
+    shell: "powershell"
+  trust:
+    source_tier: "local"
+    remote_inline_execution: "forbid"
+    remote_metadata_policy: "local-only"
+  degradation:
+    claude: "full"
+    codex: "full"
