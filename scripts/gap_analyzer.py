@@ -172,7 +172,11 @@ def analyze_material_gaps(
         for a in assets:
             # 素材级标签只做粗筛；已标注的局部动作片段也应参与缺口检测。
             # 否则一个 60 秒录屏后段的正确动作会被误判为缺失。
-            variants = [a]
+            full_verified = (
+                a.get("semantic_verified") is True
+                and a.get("semantic_scope") == "full_asset"
+            )
+            variants = [(a, False)]
             segments = a.get("semantic_segments") or []
             if isinstance(segments, list):
                 for seg in segments:
@@ -184,12 +188,22 @@ def analyze_material_gaps(
                         continue
                     if seg_duration < c.duration_seconds or not isinstance(seg.get("features"), dict):
                         continue
-                    variants.append({
+                    # 未复核的整段标签不可以给局部片段背书。
+                    # 对局部证据，仅信任 semantic_segments 自己覆盖的字段。
+                    base_features = (a.get("features") or {}) if full_verified else {}
+                    variants.append(({
                         **a, "duration_seconds": seg_duration,
-                        "features": {**(a.get("features") or {}), **seg["features"]},
-                    })
-            for candidate in variants:
+                        "features": {**base_features, **seg["features"]},
+                    }, True))
+            for candidate, localized in variants:
                 ev = evaluate_contract_match(candidate, c, threshold=threshold)
+                if ev["status"] == "PASS" and not (localized or full_verified):
+                    ev = {
+                        **ev,
+                        "status": "REVIEW_REQUIRED",
+                        "missing": ["semantic_verification"],
+                        "reason": "unverified_asset_semantics",
+                    }
                 if best is None or (rank[ev["status"]], ev["score"]) > (rank[best["status"]], best["score"]):
                     best, best_asset = ev, a
         if best is None:
