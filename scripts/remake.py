@@ -78,6 +78,9 @@ def validate_timeline(ev):
     if end != frames:
         raise ValueError(f'镜头覆盖 {end} 帧，与 frames={frames} 不一致')
 
+    if ev.get("contract_required") and not ev.get("contracts"):
+        raise ValueError("CONTRACTS_REQUIRED: 此渲染计划要求镜头契约")
+
     # 只有经审批且逐镜签署合规证明的契约计划才允许进入渲染。
     # 旧版没有 contracts 的人工时间轴保持兼容。
     if "contracts" in ev:
