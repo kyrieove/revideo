@@ -28,25 +28,30 @@ def probe(path, count=False):
 
 
 def validate_smart_approval(ev):
-    """检测到 smart_workflow 时验证审批门禁与防篡改指纹；无 smart_workflow 的旧人工事件表保持向后兼容。"""
-    if 'smart_workflow' not in ev:
-        return
-    sw = ev['smart_workflow']
-    try:
-        from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
-    except ImportError:
-        import sys
-        from pathlib import Path
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-        from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
+    """检测到智能模式 (mode='original' 或含有 smart_workflow) 时验证审批门禁与防篡改指纹；
+    仅没有 mode 且不含 smart_workflow 的旧人工事件表保持向后兼容。"""
+    mode = ev.get('mode')
+    sw = ev.get('smart_workflow')
 
-    validate_smart_workflow(sw)
-    if sw.get('status') != 'approved':
-        raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
-    
-    expected = fingerprint_render_plan(ev)
-    if sw.get('approval_sha256') != expected:
-        raise ValueError('SMART_WORKFLOW_APPROVAL_STALE')
+    # 若声明为 original 或具有 smart_workflow，则必须具备合法 approved 的 smart_workflow
+    if mode == 'original' or sw is not None:
+        if not sw:
+            raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
+        try:
+            from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
+        except ImportError:
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+            from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
+
+        validate_smart_workflow(sw)
+        if sw.get('status') != 'approved':
+            raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
+        
+        expected = fingerprint_render_plan(ev)
+        if sw.get('approval_sha256') != expected:
+            raise ValueError('SMART_WORKFLOW_APPROVAL_STALE')
 
 
 def validate_timeline(ev):

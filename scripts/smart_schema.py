@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -111,23 +112,25 @@ def validate_decisions(
     index: Optional[Dict[str, Any]] = None
 ) -> None:
     """严格验证人工审核决策 decisions.json。
-    确保每个镜头均被显式 confirmed=True 确认，杜绝无决策或伪造候选放行。
+    确保每个镜头均被显式 confirmed=True 确认，强制要求关联摘要并校验素材真实指纹。
     """
     if not isinstance(decisions, dict):
         raise ValueError("Decisions must be a dictionary")
     if decisions.get("schema_version") != CURRENT_SCHEMA_VERSION:
         raise ValueError(f"Unsupported decisions schema_version: {decisions.get('schema_version')}")
 
-    # 校验关联摘要
-    if "candidates_sha256" in decisions:
-        expected_cand_sha = fingerprint_render_plan(candidates)
-        if decisions["candidates_sha256"] != expected_cand_sha:
-            raise ValueError("Decisions candidates_sha256 mismatch with candidates document")
+    # 强制校验关联摘要，不得省略
+    if "candidates_sha256" not in decisions:
+        raise ValueError("Decisions missing mandatory candidates_sha256")
+    expected_cand_sha = fingerprint_render_plan(candidates)
+    if decisions["candidates_sha256"] != expected_cand_sha:
+        raise ValueError("Decisions candidates_sha256 mismatch with candidates document")
 
-    if "source_events_sha256" in decisions:
-        expected_src_sha = fingerprint_render_plan(source_events)
-        if decisions["source_events_sha256"] != expected_src_sha:
-            raise ValueError("Decisions source_events_sha256 mismatch with source_events document")
+    if "source_events_sha256" not in decisions:
+        raise ValueError("Decisions missing mandatory source_events_sha256")
+    expected_src_sha = fingerprint_render_plan(source_events)
+    if decisions["source_events_sha256"] != expected_src_sha:
+        raise ValueError("Decisions source_events_sha256 mismatch with source_events document")
 
     shots = source_events.get("shots", [])
     shot_ids = {s["id"] for s in shots}
@@ -165,12 +168,22 @@ def validate_decisions(
         if cand_id not in shot_cands:
             raise ValueError(f"Selected candidate {cand_id} does not exist in candidates for shot {sid}")
 
-        # 检查素材指纹
+        # 检查素材指纹与真实磁盘文件
         chosen_cand = shot_cands[cand_id]
         cand_path = chosen_cand.get("path")
-        if cand_path in asset_fp_map and chosen_cand.get("source_fingerprint"):
-            if asset_fp_map[cand_path] != chosen_cand["source_fingerprint"]:
-                raise ValueError(f"Source asset {cand_path} fingerprint mismatch (asset was modified)")
+        cand_fp = chosen_cand.get("source_fingerprint")
+        
+        # 1. 检查候选指纹与索引一致性
+        if cand_path in asset_fp_map and cand_fp:
+            if asset_fp_map[cand_path] != cand_fp:
+                raise ValueError(f"Source asset {cand_path} fingerprint mismatch with index")
+                
+        # 2. 若物理文件存在，计算当前实际指纹严格比对
+        if cand_path and Path(cand_path).exists():
+            from scripts.material_index import compute_source_fingerprint
+            real_fp = compute_source_fingerprint(cand_path)
+            if cand_fp and real_fp and real_fp != cand_fp:
+                raise ValueError(f"Source asset {cand_path} was modified on disk after indexing")
 
     if seen_shots != shot_ids:
         missing = shot_ids - seen_shots

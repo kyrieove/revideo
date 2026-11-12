@@ -191,6 +191,7 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
                 "duration_seconds": info.get("duration_seconds", 0.0),
                 "fps_str": info.get("fps_str", "unknown"),
                 "codec": info.get("codec", "unknown"),
+                "sampled_frames": frames,
                 "features": {
                     "motion_direction": feats.get("dominant_direction", "unknown"),
                     "motion_intensity": feats.get("motion_intensity", 0.0),

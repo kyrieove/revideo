@@ -103,7 +103,23 @@ def generate_preview(
     if video_path and Path(video_path).is_file():
         try:
             v_size = os.path.getsize(video_path)
-            if v_size <= 20 * 1024 * 1024:  # <= 20MB 采用 Base64 内嵌
+            # 若大于 15MB，以更低码率重编，确保单文件自包含
+            if v_size > 15 * 1024 * 1024:
+                compressed_mp4 = str(Path(video_path).parent / "draft_compressed.mp4")
+                try:
+                    subprocess.run([
+                        "ffmpeg", "-v", "error", "-y",
+                        "-i", video_path,
+                        "-c:v", "libx264", "-crf", "34", "-preset", "veryfast",
+                        "-vf", "scale=240:-2", "-an", compressed_mp4
+                    ], check=True)
+                    if Path(compressed_mp4).exists():
+                        video_path = compressed_mp4
+                        v_size = os.path.getsize(video_path)
+                except Exception:
+                    pass
+
+            if v_size <= 20 * 1024 * 1024:  # <= 20MB 采用 Base64 内嵌保证离线单文件
                 with open(video_path, "rb") as vf:
                     v_b64 = base64.b64encode(vf.read()).decode("utf-8")
                     video_tag = f'<div style="margin-bottom:20px;"><video id="main-player" controls width="540" src="data:video/mp4;base64,{v_b64}"></video></div>'

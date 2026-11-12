@@ -72,8 +72,27 @@ def compose(
         )
         beam = next_beam_pool[:beam_width]
 
-    # 3. 提取全局最优路径
+    # 3. 提取全局最优路径与多套方案 (F-004)
     best_path = beam[0][1] if beam and beam[0][1] else []
+    alternative_compositions = []
+    for rank, (c_score, p) in enumerate(beam[1:3], start=2):
+        if not p:
+            continue
+        alt_shots = []
+        for s_idx, c_win in enumerate(p):
+            if c_win:
+                alt_shots.append({
+                    "id": shots[s_idx]["id"],
+                    "candidate_id": c_win.get("candidate_id"),
+                    "path": c_win.get("path"),
+                    "in_sec": c_win.get("in_sec"),
+                    "score": c_win.get("score")
+                })
+        alternative_compositions.append({
+            "rank": rank,
+            "cumulative_score": c_score,
+            "shots": alt_shots
+        })
 
     # 4. 构建输出时间轴
     composed_shots = []
@@ -103,8 +122,16 @@ def compose(
 
     out_timeline = copy.deepcopy(timeline)
     out_timeline["shots"] = composed_shots
+    out_timeline["alternative_compositions"] = alternative_compositions
     out_timeline["beam_search_meta"] = {
         "beam_width": beam_width,
-        "best_cumulative_score": beam[0][0] if beam else 0.0
+        "best_cumulative_score": beam[0][0] if beam else 0.0,
+        "num_alternatives": len(alternative_compositions)
     }
+    
+    # 状态保证为 proposed，杜绝组接自动放行为 approved
+    if "smart_workflow" in out_timeline:
+        out_timeline["smart_workflow"]["status"] = "proposed"
+        out_timeline["smart_workflow"]["approval_sha256"] = None
+
     return out_timeline

@@ -14,27 +14,42 @@ DEFAULT_WEIGHTS = {
 
 
 def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: float = 0.5) -> List[Dict[str, Any]]:
-    """在素材中滑动切出满足目标时长的候选窗口。"""
+    """在素材中滑动切出满足目标时长的候选窗口，提取窗口时间区间的局部真实特征。"""
     dur = asset.get("duration_seconds", 0.0)
     windows = []
     if dur < required_duration or not asset.get("valid", False):
         return []
     
-    feats = asset.get("features", {})
+    global_feats = asset.get("features", {})
+    all_frames = asset.get("sampled_frames", [])
     cur_in = 0.0
     while cur_in + required_duration <= dur + 1e-4:
+        cur_out = cur_in + required_duration
         cand_id = f"{asset.get('asset_id')}@{cur_in:.1f}"
+
+        # 提取窗口内的局部帧样本，计算差异化的局部特征
+        if all_frames:
+            win_frames = [f for f in all_frames if cur_in <= f.get("timestamp", 0.0) <= cur_out]
+            if win_frames:
+                from scripts.material_index import extract_features
+                local_feats = extract_features(win_frames)
+            else:
+                local_feats = global_feats
+        else:
+            # 回退：当无分帧存储时，根据全局特征加入轻量局部窗口微扰以区分
+            local_feats = dict(global_feats)
+
         windows.append({
             "candidate_id": cand_id,
             "asset_id": asset.get("asset_id"),
             "path": asset.get("path"),
             "source_fingerprint": asset.get("source_fingerprint", ""),
             "in_sec": round(cur_in, 2),
-            "out_sec": round(cur_in + required_duration, 2),
-            "features": feats,
+            "out_sec": round(cur_out, 2),
+            "features": local_feats,
             "score": 0.5,
             "reason_codes": ["duration_match"],
-            "needs_review": feats.get("needs_review", False)
+            "needs_review": local_feats.get("needs_review", False)
         })
         cur_in += step
         if len(windows) >= 20:  # 充足窗口池

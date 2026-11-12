@@ -25,6 +25,14 @@ class TestRemakeApprovalGate(unittest.TestCase):
         # 原有不带 smart_workflow 的人工事件表必须 100% 正常通过
         validate_timeline(self.valid_legacy)
 
+    def test_rejects_unapproved_original_mode(self):
+        # 即使没有 smart_workflow 字段，只要 mode='original' 也必须强制要求审批 (解决 F-008 绕过漏洞)
+        ev = copy.deepcopy(self.valid_legacy)
+        ev["mode"] = "original"
+        with self.assertRaises(ValueError) as ctx:
+            validate_timeline(ev)
+        self.assertIn("SMART_WORKFLOW_NOT_APPROVED", str(ctx.exception))
+
     def test_rejects_unapproved_render(self):
         # 带有 smart_workflow 但未审批的拒绝正式渲染
         ev = copy.deepcopy(self.valid_legacy)
