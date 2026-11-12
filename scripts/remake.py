@@ -3,7 +3,8 @@
 每镜 shots[i].material 是素材路径（视频或图片），可选 material_in（素材里的起点秒，默认 0）、
 可选 transition（如 "fade:6" 或 {"type": "fade", "frames": 6}，表示进入本镜的 xfade 转场；"cut" 强制硬切）。
 镜头长度 = end - start 帧，照搬参考片，转场需要的重叠帧自动向后延长/克隆补齐，总帧数与切点绝不漂移。
-音乐优先 --music（默认 offset 0），其次 music.song + song_offset，最后 events.ref 原声（默认 offset 0）；--offset 覆盖起点。"""
+音乐优先 --music（默认 offset 0），其次 music.song + song_offset，最后 events.ref 原声（默认 offset 0）；--offset 覆盖起点。
+支持双模渲染：复刻模式严格核验音画对齐；原创模式支持 audio.mode="none" 无音轨直接渲染。"""
 import argparse, json, math, os, subprocess, tempfile
 from fractions import Fraction
 from pathlib import Path
@@ -31,15 +32,17 @@ def validate_smart_approval(ev):
     if 'smart_workflow' not in ev:
         return
     sw = ev['smart_workflow']
-    if sw.get('status') != 'approved':
-        raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
     try:
-        from scripts.smart_schema import fingerprint_render_plan
+        from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
     except ImportError:
         import sys
         from pathlib import Path
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-        from scripts.smart_schema import fingerprint_render_plan
+        from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
+
+    validate_smart_workflow(sw)
+    if sw.get('status') != 'approved':
+        raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
     
     expected = fingerprint_render_plan(ev)
     if sw.get('approval_sha256') != expected:
@@ -86,22 +89,33 @@ def main():
     for shot in ev['shots']:
         if shot.get('material'):
             shot['material'] = resolve(shot['material'])
+
+    audio_cfg = ev.get('audio') or {}
+    is_no_audio = (audio_cfg.get('mode') == 'none')
+
     m = ev.get('music') or {}
     music = o.music or m.get('song') or ev.get('ref')
     if not music:
-        raise ValueError('没有音源：需要 --music、music.song 或带音轨的 events.ref')
-    music = str(Path(o.music).resolve()) if o.music else resolve(music)
-    off = o.offset if o.offset is not None else (m.get('song_offset') or 0) if not o.music and m.get('song') else 0
-    if not math.isfinite(off) or off < 0:
-        raise ValueError('音轨起点必须有限且非负')
+        if not is_no_audio:
+            raise ValueError('没有音源：需要 --music、music.song 或带音轨的 events.ref')
+        music = None
+    else:
+        music = str(Path(o.music).resolve()) if o.music else resolve(music)
+
     dur = ev['frames'] / ev['fps']
-    audio = [s for s in probe(music)['streams'] if s['codec_type'] == 'audio']
-    if not audio:
-        raise ValueError(f'音源没有音轨：{music}')
-    available = float(audio[0].get('duration', 'nan'))
-    if not math.isfinite(available) or available + 0.001 < off + dur:
-        raise ValueError(f'音源不足或无法确认时长：需要 {off + dur:.4f} 秒，实际 {available}')
-    W, H = ev['size']
+    off = 0.0
+    if music:
+        off = o.offset if o.offset is not None else (m.get('song_offset') or 0) if not o.music and m.get('song') else 0
+        if not math.isfinite(off) or off < 0:
+            raise ValueError('音轨起点必须有限且非负')
+        audio = [s for s in probe(music)['streams'] if s['codec_type'] == 'audio']
+        if not audio:
+            raise ValueError(f'音源没有音轨：{music}')
+        available = float(audio[0].get('duration', 'nan'))
+        if not math.isfinite(available) or available + 0.001 < off + dur:
+            raise ValueError(f'音源不足或无法确认时长：需要 {off + dur:.4f} 秒，实际 {available}')
+
+    W, H = ev.get('size', [1280, 720])
     fr, fps = ev['fps_str'], float(ev['fps'])
     shots = ev['shots']
     missing = [f"#{s['id']}[role: {s.get('role') or '未填'}]" for s in shots if not s.get('material')]
@@ -172,20 +186,25 @@ def main():
     lst = os.path.join(tmp, 'list.txt')
     open(lst, 'w', encoding='utf-8').write(''.join(f"file '{p}'\n" for p in parts))
 
-    aud = ['-ss', f'{off:.8f}', '-t', f'{dur:.8f}', '-i', music]
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', lst, *aud,
-                    '-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '256k',
-                    '-c:v', 'libx264', '-crf', '14', '-pix_fmt', 'yuv420p', '-r', fr, o.out], check=True)
+    if music:
+        aud_args = ['-ss', f'{off:.8f}', '-t', f'{dur:.8f}', '-i', music]
+        map_args = ['-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '256k']
+    else:
+        aud_args = []
+        map_args = ['-map', '0:v:0', '-an']
+
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', lst, *aud_args,
+                    *map_args, '-c:v', 'libx264', '-crf', '14', '-pix_fmt', 'yuv420p', '-r', fr, o.out], check=True)
     measured = probe(o.out, count=True)
     video = next(s for s in measured['streams'] if s['codec_type'] == 'video')
     audio_out = next((s for s in measured['streams'] if s['codec_type'] == 'audio'), None)
     got = int(video['nb_read_frames'])
-    if (got != ev['frames'] or Fraction(video['avg_frame_rate']) != Fraction(fr)
-            or abs(float(video['duration']) - dur) > 1 / fps
-            or audio_out is None or abs(float(audio_out.get('duration', 'nan')) - dur) > 1 / fps
-            or not math.isfinite(float(audio_out.get('duration', 'nan')))):
-        raise ValueError(f'渲染后验收失败：声明 {ev["frames"]} 帧，实际 {got} 帧；音视频时长须在 1 帧内一致')
-    print(o.out, len(shots), '镜', got, '帧，音视频时长核对通过')
+    if got != ev['frames'] or Fraction(video['avg_frame_rate']) != Fraction(fr) or abs(float(video['duration']) - dur) > 1 / fps:
+        raise ValueError(f'渲染后验收失败：声明 {ev["frames"]} 帧，实际 {got} 帧')
+    if music:
+        if audio_out is None or abs(float(audio_out.get('duration', 'nan')) - dur) > 1 / fps or not math.isfinite(float(audio_out.get('duration', 'nan'))):
+            raise ValueError('渲染后验收失败：音视频时长须在 1 帧内一致')
+    print(o.out, len(shots), '镜', got, '帧，核对通过')
 
 
 if __name__ == '__main__':

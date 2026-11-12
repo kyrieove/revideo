@@ -102,3 +102,76 @@ def validate_proposal(proposal_doc: Dict[str, Any]) -> None:
         raise ValueError(f"Invalid proposal schema_version: {proposal_doc.get('schema_version')}")
     if "slots" not in proposal_doc:
         raise ValueError("Proposal document must contain 'slots'")
+
+
+def validate_decisions(
+    decisions: Dict[str, Any],
+    candidates: Dict[str, Any],
+    source_events: Dict[str, Any],
+    index: Optional[Dict[str, Any]] = None
+) -> None:
+    """严格验证人工审核决策 decisions.json。
+    确保每个镜头均被显式 confirmed=True 确认，杜绝无决策或伪造候选放行。
+    """
+    if not isinstance(decisions, dict):
+        raise ValueError("Decisions must be a dictionary")
+    if decisions.get("schema_version") != CURRENT_SCHEMA_VERSION:
+        raise ValueError(f"Unsupported decisions schema_version: {decisions.get('schema_version')}")
+
+    # 校验关联摘要
+    if "candidates_sha256" in decisions:
+        expected_cand_sha = fingerprint_render_plan(candidates)
+        if decisions["candidates_sha256"] != expected_cand_sha:
+            raise ValueError("Decisions candidates_sha256 mismatch with candidates document")
+
+    if "source_events_sha256" in decisions:
+        expected_src_sha = fingerprint_render_plan(source_events)
+        if decisions["source_events_sha256"] != expected_src_sha:
+            raise ValueError("Decisions source_events_sha256 mismatch with source_events document")
+
+    shots = source_events.get("shots", [])
+    shot_ids = {s["id"] for s in shots}
+    dec_list = decisions.get("decisions", [])
+    
+    seen_shots = set()
+    slot_cands_map = {
+        s["shot_id"]: {c["candidate_id"]: c for c in s.get("candidates", [])}
+        for s in candidates.get("slots", [])
+    }
+
+    # 索引素材哈希映射
+    asset_fp_map = {}
+    if index and "assets" in index:
+        for a in index["assets"]:
+            asset_fp_map[a.get("path")] = a.get("source_fingerprint")
+
+    for d in dec_list:
+        sid = d.get("shot_id")
+        if sid is None:
+            raise ValueError("Decision entry missing shot_id")
+        if sid in seen_shots:
+            raise ValueError(f"Duplicate decision for shot_id {sid}")
+        seen_shots.add(sid)
+
+        # 必须显式为 True，不能为 None、False 或省略
+        if d.get("confirmed") is not True:
+            raise ValueError(f"Decision for shot {sid} is not explicitly confirmed (confirmed must be True)")
+
+        cand_id = d.get("selected_candidate_id")
+        if not cand_id:
+            raise ValueError(f"Decision for shot {sid} missing selected_candidate_id")
+
+        shot_cands = slot_cands_map.get(sid, {})
+        if cand_id not in shot_cands:
+            raise ValueError(f"Selected candidate {cand_id} does not exist in candidates for shot {sid}")
+
+        # 检查素材指纹
+        chosen_cand = shot_cands[cand_id]
+        cand_path = chosen_cand.get("path")
+        if cand_path in asset_fp_map and chosen_cand.get("source_fingerprint"):
+            if asset_fp_map[cand_path] != chosen_cand["source_fingerprint"]:
+                raise ValueError(f"Source asset {cand_path} fingerprint mismatch (asset was modified)")
+
+    if seen_shots != shot_ids:
+        missing = shot_ids - seen_shots
+        raise ValueError(f"Decisions missing confirmation for shots: {sorted(list(missing))}")

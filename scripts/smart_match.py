@@ -1,6 +1,6 @@
 """smart_match.py - 镜头审美打分、波束搜索候选装配与自主时间轴生成 (M2)"""
 
-import hashlib
+from fractions import Fraction
 from typing import Any, Dict, List, Optional, Tuple
 
 DEFAULT_WEIGHTS = {
@@ -20,56 +20,91 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
     if dur < required_duration or not asset.get("valid", False):
         return []
     
+    feats = asset.get("features", {})
     cur_in = 0.0
-    while cur_in + required_duration <= dur:
+    while cur_in + required_duration <= dur + 1e-4:
         cand_id = f"{asset.get('asset_id')}@{cur_in:.1f}"
         windows.append({
             "candidate_id": cand_id,
             "asset_id": asset.get("asset_id"),
             "path": asset.get("path"),
-            "in_sec": cur_in,
-            "out_sec": cur_in + required_duration,
+            "source_fingerprint": asset.get("source_fingerprint", ""),
+            "in_sec": round(cur_in, 2),
+            "out_sec": round(cur_in + required_duration, 2),
+            "features": feats,
             "score": 0.5,
-            "sub_scores": {k: 0.5 for k in DEFAULT_WEIGHTS},
-            "reason_codes": ["window_duration_ok"],
-            "needs_review": True
+            "reason_codes": ["duration_match"],
+            "needs_review": feats.get("needs_review", False)
         })
         cur_in += step
-        if len(windows) >= 10:  # 限制候选数量
+        if len(windows) >= 20:  # 充足窗口池
             break
             
     return windows
 
 
 def score_candidate(target: Dict[str, Any], candidate: Dict[str, Any], weights: Optional[Dict[str, float]] = None) -> float:
-    """计算单个候选窗口与目标槽位的视听匹配度。"""
-    w = weights or DEFAULT_WEIGHTS
-    # 基础可解释打分逻辑
-    return 0.75
+    """根据目标镜头的能量、动向与景别预期，对候选素材进行动态、可解释打分。"""
+    cand_feats = candidate.get("features", {})
+    cand_motion = float(cand_feats.get("motion_intensity", 0.3))
+    cand_dir = cand_feats.get("motion_direction", "static")
+    cand_bright = float(cand_feats.get("brightness", 0.5))
+
+    target_energy = float(target.get("target_energy", 0.5))
+    target_role = target.get("role", "ambient")
+    target_dir = target.get("target_direction")
+
+    # 1. 能量与动作匹配分
+    energy_score = 1.0 - min(1.0, abs(target_energy - cand_motion))
+
+    # 2. 动向匹配分
+    if target_dir:
+        dir_score = 1.0 if target_dir == cand_dir else 0.3
+    else:
+        # 高能量偏好运动，低能量偏好平稳
+        dir_score = 0.9 if (target_energy > 0.6 and cand_dir != "static") or (target_energy <= 0.6 and cand_dir == "static") else 0.6
+
+    # 3. 角色意图匹配分
+    if target_role == "highlight":
+        role_score = 0.9 if cand_motion > 0.25 or cand_bright > 0.4 else 0.4
+    else:
+        role_score = 0.8
+
+    final_score = energy_score * 0.45 + dir_score * 0.3 + role_score * 0.25
+    reasons = ["duration_match"]
+    if energy_score > 0.7:
+        reasons.append("energy_match")
+    if dir_score > 0.8:
+        reasons.append("direction_match")
+    candidate["reason_codes"] = reasons
+    return round(final_score, 3)
 
 
 def score_transition(prev_cand: Optional[Dict[str, Any]], cur_cand: Dict[str, Any]) -> float:
-    """评估相邻镜头间的动向连续性与色彩衔接。"""
+    """评估相邻镜头间的动向连续性与重复惩罚。"""
     if not prev_cand:
         return 1.0
-    # 同素材惩罚
-    if prev_cand.get("asset_id") == cur_cand.get("asset_id"):
-        return 0.3
-    return 0.85
+    
+    # 强烈惩罚相邻镜头重复使用同一素材
+    if prev_cand.get("asset_id") == cur_cand.get("asset_id") or prev_cand.get("path") == cur_cand.get("path"):
+        return 0.25
 
-
-def beam_search(slots: List[Dict[str, Any]], beam_width: int = 8) -> List[Dict[str, Any]]:
-    """波束搜索选择全局最优镜头装配方案。"""
-    return []
+    # 运镜对冲与衔接
+    p_dir = prev_cand.get("features", {}).get("motion_direction", "static")
+    c_dir = cur_cand.get("features", {}).get("motion_direction", "static")
+    if p_dir == c_dir and p_dir != "static":
+        return 0.95  # 顺接奖励
+    return 0.80
 
 
 def propose(events: Dict[str, Any], index: Dict[str, Any], top_k: int = 3) -> Dict[str, Any]:
-    """生成整片候选方案（支持复刻模式及自主创作时间轴扩展）。"""
+    """为全片生成经过真实打分排序的每镜最优候选表，杜绝固定假分与按素材顺序截断。"""
     slots_output = []
     assets = index.get("assets", [])
     
     shots = events.get("shots", [])
-    fps = 30.0
+    fps_str = events.get("fps_str") or f"{events.get('fps', 30.0)}/1"
+    fps = float(Fraction(fps_str))
     
     for shot in shots:
         sid = shot.get("id")
@@ -81,11 +116,9 @@ def propose(events: Dict[str, Any], index: Dict[str, Any], top_k: int = 3) -> Di
                 score = score_candidate(shot, w)
                 w["score"] = score
                 candidates.append(w)
-                if len(candidates) >= top_k:
-                    break
-            if len(candidates) >= top_k:
-                break
-                
+
+        # 全池按评分降序排序，取最高 top_k
+        candidates.sort(key=lambda c: c["score"], reverse=True)
         slots_output.append({
             "shot_id": sid,
             "candidates": candidates[:top_k]

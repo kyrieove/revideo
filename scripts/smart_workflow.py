@@ -5,13 +5,17 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
+from scripts.smart_schema import (
+    fingerprint_render_plan,
+    validate_smart_workflow,
+    validate_decisions,
+    validate_source_events,
+)
 
 
 def build_proposed_plan(events: Dict[str, Any], candidates: Dict[str, Any]) -> Dict[str, Any]:
     """将候选表中的最高分素材注入，生成待审核事件表 events.proposed.json。"""
     proposed = copy.deepcopy(events)
-    # 取出候选推荐填补
     slots_map = {s["shot_id"]: s.get("candidates", []) for s in candidates.get("slots", [])}
     for s in proposed.get("shots", []):
         cands = slots_map.get(s.get("id"), [])
@@ -33,23 +37,71 @@ def build_proposed_plan(events: Dict[str, Any], candidates: Dict[str, Any]) -> D
     return proposed
 
 
-def approve(proposed_events: Dict[str, Any], decisions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def approve(
+    proposed_events: Dict[str, Any],
+    decisions: Dict[str, Any],
+    candidates: Dict[str, Any],
+    source_events: Dict[str, Any],
+    index: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """对已完成审查的方案打上审批签名，输出 events.approved.json。
-    必须验证 decisions 中所有镜头均已明确确认，杜绝未审查直接通过。
+    必须传入 decisions、candidates、source_events，逐镜核对决策有效性，杜绝未经人工审核放行。
     """
-    if decisions is not None:
-        dec_map = {d["shot_id"]: d for d in decisions.get("decisions", [])}
-        for shot in proposed_events.get("shots", []):
-            sid = shot.get("id")
-            if sid not in dec_map or not dec_map[sid].get("confirmed", True):
-                raise ValueError(f"Shot {sid} is missing confirmed human decision")
+    if decisions is None:
+        raise ValueError("SMART_WORKFLOW_DECISIONS_REQUIRED: decisions cannot be None")
+    if candidates is None:
+        raise ValueError("SMART_WORKFLOW_CANDIDATES_REQUIRED: candidates cannot be None")
+    if source_events is None:
+        raise ValueError("SMART_WORKFLOW_SOURCE_EVENTS_REQUIRED: source_events cannot be None")
+
+    # 复刻模式下，严格核对源事件表与批准方案的切点与帧参数，禁止切点漂移
+    sw = proposed_events.get("smart_workflow") or {}
+    mode = sw.get("mode") or proposed_events.get("mode", "reference")
+    if mode == "reference":
+        for attr in ("fps", "fps_str", "frames"):
+            if proposed_events.get(attr) != source_events.get(attr):
+                raise ValueError(f"SMART_WORKFLOW_REFERENCE_TIMELINE_ALTERED: {attr} changed")
+        
+        p_shots = proposed_events.get("shots", [])
+        s_shots = source_events.get("shots", [])
+        if len(p_shots) != len(s_shots):
+            raise ValueError("SMART_WORKFLOW_REFERENCE_TIMELINE_ALTERED: shot count mismatch")
+        for ps, ss in zip(p_shots, s_shots):
+            if ps.get("id") != ss.get("id") or ps.get("start") != ss.get("start") or ps.get("end") != ss.get("end"):
+                raise ValueError(f"SMART_WORKFLOW_REFERENCE_TIMELINE_ALTERED: shot boundary changed for shot {ps.get('id')}")
+
+    # 严格校验人工决策契约
+    validate_decisions(decisions, candidates, source_events, index)
+
+    # 校验每个镜头的实际素材与决策一致
+    dec_map = {d["shot_id"]: d for d in decisions.get("decisions", [])}
+    slot_cands_map = {
+        s["shot_id"]: {c["candidate_id"]: c for c in s.get("candidates", [])}
+        for s in candidates.get("slots", [])
+    }
 
     approved = copy.deepcopy(proposed_events)
+    for shot in approved.get("shots", []):
+        sid = shot.get("id")
+        dec = dec_map[sid]
+        chosen_cand_id = dec["selected_candidate_id"]
+        cand_meta = slot_cands_map[sid][chosen_cand_id]
+
+        # 确保镜头素材路径与入点已应用所选决策
+        shot["material"] = cand_meta.get("path")
+        shot["material_in"] = cand_meta.get("in_sec")
+        shot["selection"] = {
+            "candidate_id": chosen_cand_id,
+            "score": cand_meta.get("score"),
+            "confirmed": True
+        }
+
     fp = fingerprint_render_plan(approved)
+    src_fp = fingerprint_render_plan(source_events)
     approved["smart_workflow"] = {
         "schema_version": 1,
         "status": "approved",
-        "source_events_sha256": approved.get("smart_workflow", {}).get("source_events_sha256", fp),
+        "source_events_sha256": src_fp,
         "approval_sha256": fp
     }
     return approved

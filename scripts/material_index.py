@@ -1,4 +1,4 @@
-"""material_index.py - 素材批量发现、ffprobe/ffmpeg解帧与视听特征抽取 (M1)"""
+"""material_index.py - 素材批量发现、ffprobe/ffmpeg解帧与真实视听特征抽取 (M1)"""
 
 import hashlib
 import json
@@ -10,6 +10,24 @@ from typing import Any, Dict, List, Optional, Tuple
 
 CURRENT_SCHEMA_VERSION = 1
 SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
+
+
+def compute_source_fingerprint(path: str) -> str:
+    """计算素材文件的快速指纹（文件大小 + mtime + 首尾64KB内容），检测素材是否被替换或篡改。"""
+    try:
+        stat = os.stat(path)
+        h = hashlib.sha256()
+        h.update(f"{stat.st_size}_{stat.st_mtime}".encode("utf-8"))
+        with open(path, "rb") as f:
+            head = f.read(65536)
+            h.update(head)
+            if stat.st_size > 65536:
+                f.seek(max(0, stat.st_size - 65536))
+                tail = f.read(65536)
+                h.update(tail)
+        return h.hexdigest()
+    except Exception:
+        return ""
 
 
 def discover_assets(root: str) -> List[str]:
@@ -62,57 +80,101 @@ def probe_asset(path: str) -> Dict[str, Any]:
     }
 
 
-def sample_asset(path: str, sample_fps: int = 8, target_height: int = 144) -> List[Dict[str, Any]]:
-    """通过 ffmpeg 管道轻量解码缩小帧（灰度图），提取真实帧数据。"""
+def sample_asset(path: str, sample_fps: int = 8, target_w: int = 160, target_h: int = 90) -> List[Dict[str, Any]]:
+    """通过 ffmpeg 管道轻量解码真实像素（160x90 灰度帧），逐帧计算亮度、帧间差动量与动向。"""
+    frame_size = target_w * target_h
     cmd = [
         "ffmpeg", "-v", "error",
         "-i", path,
-        "-vf", f"fps={sample_fps},scale=-1:{target_height},format=gray",
+        "-vf", f"fps={sample_fps},scale={target_w}:{target_h},format=gray",
         "-f", "rawvideo",
         "-"
     ]
     try:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         raw = proc.stdout
-        if not raw:
+        if not raw or len(raw) < frame_size:
             return []
-        # 按灰度帧均值和简单帧差计算轻量特征
-        frame_size = target_height * (target_height * 16 // 9)  # 估算
-        # 产生真实采样切片
-        num_frames = max(1, len(raw) // 10000)
+
+        num_frames = len(raw) // frame_size
         samples = []
-        for i in range(min(num_frames, 30)):
+        prev_frame = None
+
+        for i in range(num_frames):
+            offset = i * frame_size
+            chunk = raw[offset : offset + frame_size]
+            
+            # 真实灰度均值计算 [0.0, 1.0]
+            avg_lum = sum(chunk) / (frame_size * 255.0)
+
+            motion = 0.0
+            direction = "static"
+            if prev_frame is not None:
+                # 逐像素绝对差值计算运动强度
+                diffs = [abs(a - b) for a, b in zip(chunk, prev_frame)]
+                motion = sum(diffs) / (frame_size * 255.0)
+
+                # 左右半屏动量分布判断运镜/主体方向
+                if motion > 0.02:
+                    left_diff = sum(sum(diffs[r * target_w : r * target_w + (target_w // 2)]) for r in range(target_h))
+                    right_diff = sum(sum(diffs[r * target_w + (target_w // 2) : (r + 1) * target_w]) for r in range(target_h))
+                    if left_diff > right_diff * 1.25:
+                        direction = "right_to_left"
+                    elif right_diff > left_diff * 1.25:
+                        direction = "left_to_right"
+                    else:
+                        direction = "pan"
+
+            prev_frame = chunk
             samples.append({
-                "timestamp": i / float(sample_fps),
-                "luminance": 0.5,
-                "motion": 0.1 * (i % 5)
+                "timestamp": round(i / float(sample_fps), 3),
+                "luminance": round(avg_lum, 3),
+                "motion": round(motion, 3),
+                "direction": direction
             })
         return samples
     except Exception:
         return []
 
 
-def extract_features(frames: List[Any]) -> Dict[str, Any]:
-    """逐时间点提取亮度、运动强度、动向、色彩与动作峰值。"""
+def extract_features(frames: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """根据真实采样切片聚合素材的特征标签（亮度、运动强度、优势动向与能量曲线）。"""
     if not frames:
         return {
-            "motion_intensity": 0.3,
-            "dominant_direction": "static",
-            "brightness": 0.5,
-            "energy_curve": [0.2, 0.4, 0.6]
+            "motion_intensity": 0.0,
+            "dominant_direction": "unknown",
+            "brightness": 0.0,
+            "energy_curve": [],
+            "needs_review": True
         }
-    motions = [f.get("motion", 0.0) for f in frames if isinstance(f, dict)]
-    avg_m = sum(motions) / len(motions) if motions else 0.2
+
+    lums = [f["luminance"] for f in frames if "luminance" in f]
+    motions = [f["motion"] for f in frames if "motion" in f]
+    directions = [f["direction"] for f in frames if "direction" in f and f["direction"] != "static"]
+
+    avg_lum = sum(lums) / len(lums) if lums else 0.5
+    avg_motion = sum(motions) / len(motions) if motions else 0.0
+    
+    # 统计出现次数最多的非静止动向
+    dom_dir = "static"
+    if directions:
+        from collections import Counter
+        dom_dir = Counter(directions).most_common(1)[0][0]
+
+    # 能量曲线由亮度和运动共同决定
+    energy_curve = [round(l * m * 2.0, 3) for l, m in zip(lums, motions)]
+
     return {
-        "motion_intensity": round(avg_m, 3),
-        "dominant_direction": "left_to_right" if avg_m > 0.3 else "static",
-        "brightness": 0.55,
-        "energy_curve": [round(m, 3) for m in motions[:10]]
+        "motion_intensity": round(avg_motion, 3),
+        "dominant_direction": dom_dir,
+        "brightness": round(avg_lum, 3),
+        "energy_curve": energy_curve[:16],
+        "needs_review": False
     }
 
 
 def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """构建素材库全局索引并持久化。"""
+    """构建素材库全局特征索引并持久化，记录 source_fingerprint 防篡改。"""
     assets = []
     for root in media_roots:
         paths = discover_assets(root)
@@ -120,9 +182,11 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
             info = probe_asset(p)
             frames = sample_asset(p) if info.get("valid") else []
             feats = extract_features(frames)
+            sf = compute_source_fingerprint(p)
             asset_entry = {
                 "asset_id": hashlib.md5(p.encode("utf-8")).hexdigest()[:12],
                 "path": p,
+                "source_fingerprint": sf,
                 "valid": info.get("valid", False),
                 "duration_seconds": info.get("duration_seconds", 0.0),
                 "fps_str": info.get("fps_str", "unknown"),
@@ -133,7 +197,7 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
                     "brightness": feats.get("brightness", 0.5),
                     "energy_curve": feats.get("energy_curve", []),
                     "scale_type": "medium",
-                    "needs_review": False if info.get("valid") else True
+                    "needs_review": feats.get("needs_review", False)
                 },
                 "quality_flags": [] if info.get("valid") else [info.get("error", "invalid")]
             }

@@ -1,6 +1,7 @@
-"""smart_compose.py - 双模全片全局组接与波束搜索引擎"""
+"""smart_compose.py - 双模全片全局组接与真正波束搜索引擎 (M2)"""
 
 import copy
+from fractions import Fraction
 from typing import Any, Dict, List, Optional
 from scripts.smart_match import enumerate_windows, score_candidate, score_transition
 
@@ -12,45 +13,98 @@ def compose(
     top_k: int = 3,
     constraints: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """根据时间轴（复刻时间轴或自主原创时间轴）与素材特征池，执行波束搜索全局组接。"""
+    """使用真正波束搜索（Beam Search）执行全片镜头全局优化组接。
+    考虑单镜审美特征契合度、相邻镜头转场衔接与全局素材重复度惩罚，杜绝局部贪心组接。
+    """
     shots = timeline.get("shots", [])
     assets = index.get("assets", [])
-    fps = timeline.get("fps", 30.0)
-    
-    composed_shots = []
-    prev_selected = None
-    
+    fps_str = timeline.get("fps_str") or f"{timeline.get('fps', 30.0)}/1"
+    fps = float(Fraction(fps_str))
+
+    if not shots:
+        return copy.deepcopy(timeline)
+
+    # 1. 预先为每个镜头收集并打分所有合法窗口
+    shot_candidates: List[List[Dict[str, Any]]] = []
     for shot in shots:
         dur_sec = (shot.get("end", 30) - shot.get("start", 0)) / fps
-        candidates = []
+        cands = []
         for asset in assets:
             windows = enumerate_windows(asset, dur_sec)
             for w in windows:
-                base_score = score_candidate(shot, w)
-                trans_score = score_transition(prev_selected, w)
-                final_score = base_score * 0.7 + trans_score * 0.3
-                w_copy = copy.deepcopy(w)
-                w_copy["score"] = round(final_score, 3)
-                candidates.append(w_copy)
+                score = score_candidate(shot, w)
+                w["score"] = score
+                cands.append(w)
+        # 按单镜分数降序
+        cands.sort(key=lambda c: c["score"], reverse=True)
+        # 为波束扩展保留前 12 个优质候选
+        shot_candidates.append(cands[:12] if cands else [])
+
+    # 2. 执行波束搜索
+    # 状态元组: (cumulative_score, [selected_window, ...])
+    beam: List[Tuple[float, List[Dict[str, Any]]]] = [(0.0, [])]
+
+    for t, cands in enumerate(shot_candidates):
+        if not cands:
+            # 若无候选素材，保持占位
+            beam = [(score, path + [None]) for score, path in beam]
+            continue
+
+        next_beam_pool: List[Tuple[float, List[Dict[str, Any]]]] = []
+        for cum_score, path in beam:
+            prev = path[-1] if path else None
+            for c in cands:
+                # 综合单镜分与转场分
+                trans_score = score_transition(prev, c)
+                step_score = c["score"] * 0.65 + trans_score * 0.35
                 
-        # 确定性排序
-        candidates.sort(key=lambda x: x["score"], reverse=True)
-        top_candidates = candidates[:top_k]
-        
+                # 整体重复使用惩罚
+                used_paths = [p.get("path") for p in path if p is not None]
+                if c.get("path") in used_paths:
+                    step_score *= 0.85
+
+                next_beam_pool.append((round(cum_score + step_score, 4), path + [c]))
+
+        # 确定性排序：累积分数从高到低，平局按候选 ID 字典序
+        next_beam_pool.sort(
+            key=lambda item: (item[0], item[1][-1].get("candidate_id", "") if item[1][-1] else ""),
+            reverse=True
+        )
+        beam = next_beam_pool[:beam_width]
+
+    # 3. 提取全局最优路径
+    best_path = beam[0][1] if beam and beam[0][1] else []
+
+    # 4. 构建输出时间轴
+    composed_shots = []
+    for idx, shot in enumerate(shots):
         shot_out = copy.deepcopy(shot)
-        if top_candidates:
-            best = top_candidates[0]
-            shot_out["material"] = best.get("path")
-            shot_out["material_in"] = best.get("in_sec")
+        cands = shot_candidates[idx]
+        chosen = best_path[idx] if idx < len(best_path) else None
+
+        if chosen:
+            shot_out["material"] = chosen.get("path")
+            shot_out["material_in"] = chosen.get("in_sec")
             shot_out["selection"] = {
-                "candidate_id": best.get("candidate_id"),
-                "score": best.get("score")
+                "candidate_id": chosen.get("candidate_id"),
+                "score": chosen.get("score"),
+                "beam_rank": 1
             }
-            prev_selected = best
-            
-        shot_out["candidates"] = top_candidates
+
+        cands_out = [chosen] if chosen else []
+        for c in cands:
+            if chosen and c.get("candidate_id") == chosen.get("candidate_id"):
+                continue
+            cands_out.append(c)
+            if len(cands_out) >= top_k:
+                break
+        shot_out["candidates"] = cands_out
         composed_shots.append(shot_out)
-        
+
     out_timeline = copy.deepcopy(timeline)
     out_timeline["shots"] = composed_shots
+    out_timeline["beam_search_meta"] = {
+        "beam_width": beam_width,
+        "best_cumulative_score": beam[0][0] if beam else 0.0
+    }
     return out_timeline
