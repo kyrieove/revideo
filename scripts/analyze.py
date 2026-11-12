@@ -12,6 +12,14 @@ from scipy.signal import find_peaks
 
 from reference_review import attach, has_review
 
+try:
+    from smart_inspect import generate_rhythm_inspector
+except ImportError:
+    try:
+        from scripts.smart_inspect import generate_rhythm_inspector
+    except ImportError:
+        generate_rhythm_inspector = None
+
 SW = 192          # 测量用的缩小宽度
 DIFF_T = 18       # 像素亮度变化超过这个值算「变了」（0–255）
 
@@ -122,6 +130,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('video'); ap.add_argument('out')
     ap.add_argument('--rea'); ap.add_argument('--song')
+    ap.add_argument('--inspect', action='store_true', default=True, help='自动生成音画同轴走带卡点可视化检验页面')
+    ap.add_argument('--no-inspect', dest='inspect', action='store_false', help='跳过生成可视化检验页面')
     o = ap.parse_args()
     os.makedirs(o.out, exist_ok=True)
     W, H, fps, fps_str = probe(o.video)
@@ -194,6 +204,13 @@ def main():
     if o.rea:
         print(f'  切点分歧：只有 rea-video {only_rea}  只有 scenedetect {only_sd}')
     print(f'  BPM {tempo}  鼓点 {len(dr)}' + (f'  song_offset {off[0]} s（相关 {off[1]}）' if off else ''))
+    if o.inspect and generate_rhythm_inspector is not None:
+        try:
+            inspect_html = os.path.join(o.out, 'rhythm_inspector.html')
+            generate_rhythm_inspector(o.video, doc, inspect_html)
+            print(f'  音画同轴走带看板已生成：{inspect_html}')
+        except Exception as exc:
+            print(f'  [WARN] 走带看板生成跳过: {exc}')
 
 
 def tool_versions():
