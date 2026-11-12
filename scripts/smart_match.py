@@ -72,6 +72,29 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
                     offsets.append(min(max_start, max(0.0, start)))
                     offsets.append(min(max_start, max(0.0, end - required_duration)))
     offsets = sorted({round(x, 4) for x in offsets})
+
+    # Match Cut 只能用实际剪切边界附近人工复核过的姿态标记。
+    try:
+        source_fps = float(Fraction(str(asset.get("fps_str") or 30)))
+        anchor_tolerance = 0.5 / source_fps + 0.005 if source_fps > 0 else 0.02
+    except (ValueError, ZeroDivisionError):
+        anchor_tolerance = 0.02
+    anchors = asset.get("transition_anchors") or []
+    def boundary_anchor(target_sec):
+        if not isinstance(anchors, list):
+            return None
+        eligible = []
+        for marker in anchors:
+            if not isinstance(marker, dict) or marker.get("verified") is not True:
+                continue
+            try:
+                error = abs(float(marker["time"]) - target_sec)
+            except (ValueError, TypeError, KeyError):
+                continue
+            if error <= anchor_tolerance:
+                eligible.append((error, marker))
+        return min(eligible, key=lambda item: item[0])[1] if eligible else None
+
     for cur_in in offsets:
         cur_out = cur_in + required_duration
         cand_id = f"{raw_id or raw_path or 'cand'}@{cur_in:.4f}"
@@ -136,6 +159,8 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
             "candidate_id": cand_id,
             "duration_seconds": required_duration,
             "semantic_evidence": semantic_evidence,
+            "start_anchor": boundary_anchor(cur_in),
+            "end_anchor": boundary_anchor(cur_out),
             "asset_id": asset.get("asset_id"),
             "path": asset.get("path"),
             "source_fingerprint": asset.get("source_fingerprint", ""),
