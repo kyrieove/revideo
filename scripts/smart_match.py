@@ -13,8 +13,11 @@ DEFAULT_WEIGHTS = {
 }
 
 
-# 全局窗口特征缓存：键为 (source_fingerprint, in_sec, out_sec) -> Dict[str, Any]
-_WINDOW_FEATURE_CACHE: Dict[Tuple[str, float, float], Dict[str, Any]] = {}
+# 特征算法版本契约
+FEATURE_ALGO_VERSION = "v2"
+
+# 全局窗口特征缓存：键为 (asset_identity, sample_version, algo_version, in_sec, out_sec) -> Dict[str, Any]
+_WINDOW_FEATURE_CACHE: Dict[Tuple[str, str, str, float, float], Dict[str, Any]] = {}
 
 def clear_window_feature_cache() -> None:
     """清空窗口特征缓存，供单元测试隔离使用。"""
@@ -22,7 +25,7 @@ def clear_window_feature_cache() -> None:
     _WINDOW_FEATURE_CACHE.clear()
 
 def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: float = 0.5) -> List[Dict[str, Any]]:
-    """在素材中滑动切出满足目标时长的候选窗口，提取窗口时间区间的局部真实特征（带缓存）。"""
+    """在素材中滑动切出满足目标时长的候选窗口，提取窗口时间区间的局部真实特征（带防碰撞缓存）。"""
     dur = asset.get("duration_seconds", 0.0)
     windows = []
     if dur < required_duration or not asset.get("valid", False):
@@ -30,12 +33,26 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
     
     global_feats = asset.get("features", {})
     all_frames = asset.get("sampled_frames", [])
-    fp = asset.get("source_fingerprint", asset.get("asset_id", ""))
+    
+    # 严格确立唯一素材身份，防止空指纹导致多素材共用缓存 (F-011)
+    raw_fp = str(asset.get("source_fingerprint") or "").strip()
+    raw_id = str(asset.get("asset_id") or "").strip()
+    raw_path = str(asset.get("path") or "").strip()
+    asset_identity = raw_fp if raw_fp else (raw_id if raw_id else raw_path)
+    if not asset_identity:
+        asset_identity = f"anon_{id(asset)}"
+        
+    # 采样配置版本：根据帧数与首末时间戳建立指纹，采样配置变化自动使缓存隔离失效
+    if all_frames:
+        sample_version = f"frames_{len(all_frames)}_{all_frames[0].get('timestamp',0):.2f}_{all_frames[-1].get('timestamp',0):.2f}"
+    else:
+        sample_version = "no_frames"
+
     cur_in = 0.0
     while cur_in + required_duration <= dur + 1e-4:
         cur_out = cur_in + required_duration
-        cand_id = f"{asset.get('asset_id')}@{cur_in:.1f}"
-        cache_key = (fp, round(cur_in, 2), round(cur_out, 2))
+        cand_id = f"{raw_id or 'cand'}@{cur_in:.1f}"
+        cache_key = (asset_identity, sample_version, FEATURE_ALGO_VERSION, round(cur_in, 4), round(cur_out, 4))
 
         # 优先读取缓存
         if cache_key in _WINDOW_FEATURE_CACHE:
@@ -45,7 +62,6 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
             if win_frames:
                 from scripts.material_index import extract_features
                 raw_feats = extract_features(win_frames)
-                # 规范化方向字段：确保 motion_direction 与 dominant_direction 双向同步
                 m_dir = raw_feats.get("motion_direction") or raw_feats.get("dominant_direction") or "static"
                 raw_feats["motion_direction"] = m_dir
                 raw_feats["dominant_direction"] = m_dir
@@ -54,7 +70,6 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
                 local_feats = dict(global_feats)
             _WINDOW_FEATURE_CACHE[cache_key] = dict(local_feats)
         else:
-            # 回退：当无分帧存储时使用全局特征
             local_feats = dict(global_feats)
             m_dir = local_feats.get("motion_direction") or local_feats.get("dominant_direction") or "static"
             local_feats["motion_direction"] = m_dir

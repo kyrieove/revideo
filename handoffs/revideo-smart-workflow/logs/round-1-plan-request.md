@@ -2,13 +2,13 @@
 
 - **Task ID**: `revideo-smart-workflow`
         - **Round**: 1 (Planning)
-- **Input Baseline Commit SHA**: `9a5c76deb036804b4abab3229bd90506afca8384`
+- **Input Baseline Commit SHA**: `ce5beca8c1545d81e2561914ac2cc9e3fdd29349`
 - **Repository Root (Local Context)**: `D:/2/dev/revideo`
 - **Task Title**: revideo素材智能选择与人机协同交互优化
 
 ## Readable Materials & Remote Entry Points
-- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/9a5c76deb036804b4abab3229bd90506afca8384
-- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/9a5c76deb036804b4abab3229bd90506afca8384
+- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/ce5beca8c1545d81e2561914ac2cc9e3fdd29349
+- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/ce5beca8c1545d81e2561914ac2cc9e3fdd29349
 - **Pull Request URL**: Not configured
 - **Commit Publish Status**: PUSHED_TO_REMOTE
 - **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`
@@ -55,7 +55,7 @@ revideo 工具目前具备对参考视频进行分析（逐镜切点、运动速
 版本 1：根据用户核心反馈及项目记忆初始化。
 
 ## Planning Instructions
-请务必实际访问并阅读上述精确 SHA (`9a5c76deb036804b4abab3229bd90506afca8384`) 的代码及改动。
+请务必实际访问并阅读上述精确 SHA (`ce5beca8c1545d81e2561914ac2cc9e3fdd29349`) 的代码及改动。
 注意：本次规划与审查仅覆盖指定 SHA 代码，本地可能存在的未跟踪文件或差异不包含在内。
 若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接判定。
 你负责设计：steps 必须写到执行端无需再读代码判断的程度（文件、函数、具体改动；容易写错的地方给代码片段）。每个 P0/P1 修复都要配一个在旧代码上会失败的测试。执行端只照 steps 做，有疑问会回 NEEDS_INPUT。
@@ -65,7 +65,7 @@ revideo 工具目前具备对参考视频进行分析（逐镜切点、运动速
 {
   "task_id": "revideo-smart-workflow",
   "round": 1,
-  "reviewed_head_sha": "9a5c76deb036804b4abab3229bd90506afca8384",
+  "reviewed_head_sha": "ce5beca8c1545d81e2561914ac2cc9e3fdd29349",
   "decision": "<PLAN_READY | NEEDS_INPUT | BLOCKED>",
   "steps": [
     "1. 文件 → 函数 → 具体改动",

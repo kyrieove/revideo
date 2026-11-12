@@ -1,19 +1,19 @@
-# Antigravity Task Plan Request [req-revideo-smart-workflow-r1-plan]
+# Antigravity Code Review Request [req-revideo-smart-workflow-r1-review]
 
 - **Task ID**: `revideo-smart-workflow`
-        - **Round**: 1 (Planning)
-- **Input Baseline Commit SHA**: `9a5c76deb036804b4abab3229bd90506afca8384`
+- **Round**: 1
+- **Reviewed Head Commit SHA**: `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`
 - **Repository Root (Local Context)**: `D:/2/dev/revideo`
-- **Task Title**: revideo素材智能选择与人机协同交互优化
 
 ## Readable Materials & Remote Entry Points
-- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/9a5c76deb036804b4abab3229bd90506afca8384
-- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/9a5c76deb036804b4abab3229bd90506afca8384
+- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d
+- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d
 - **Pull Request URL**: Not configured
-- **Commit Publish Status**: PUSHED_TO_REMOTE
+- **Commit Publish Status**: UNPUSHED / PENDING_PUBLISH (Commit exists locally only)
 - **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`
+- **Test Evidence Remote Path**: `handoffs/revideo-smart-workflow/TEST_RESULTS.md`
 
-## Task Brief & Requirements
+## Task Brief & Acceptance Scope
 # 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化
 
 - task_id: revideo-smart-workflow
@@ -54,25 +54,74 @@ revideo 工具目前具备对参考视频进行分析（逐镜切点、运动速
 
 版本 1：根据用户核心反馈及项目记忆初始化。
 
-## Planning Instructions
-请务必实际访问并阅读上述精确 SHA (`9a5c76deb036804b4abab3229bd90506afca8384`) 的代码及改动。
-注意：本次规划与审查仅覆盖指定 SHA 代码，本地可能存在的未跟踪文件或差异不包含在内。
-若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接判定。
-你负责设计：steps 必须写到执行端无需再读代码判断的程度（文件、函数、具体改动；容易写错的地方给代码片段）。每个 P0/P1 修复都要配一个在旧代码上会失败的测试。执行端只照 steps 做，有疑问会回 NEEDS_INPUT。
-请在回复末尾附带严格符合下述契约的机器可读 JSON 区块：
+## Recent Git Commits
+```
+4d4f67e feat(smart-workflow): implement M0-M3 core modules and gates (schema, index, match, approval, preview)
+ce5beca docs: add revideo smart workflow task brief
+9a5c76d Add audio_guard, reference_review, rife_curve (untracked in source repo)
+9893fac Import uncommitted work-in-progress: analyze/effects/remake from working tree
+77828f6 Initial import of revideo (HEAD of claude-video tools/revideo + skill docs)
+```
+
+## Diff Stat for Reviewed Commit (Metadata Only)
+```
+references/smart-workflow-contract.md |  64 ++++++++++++++++++
+ scripts/material_index.py             | 120 ++++++++++++++++++++++++++++++++++
+ scripts/remake.py                     |  17 +++++
+ scripts/smart_match.py                |  97 +++++++++++++++++++++++++++
+ scripts/smart_preview.py              |  43 ++++++++++++
+ scripts/smart_reference.py            |  25 +++++++
+ scripts/smart_schema.py               | 104 +++++++++++++++++++++++++++++
+ scripts/smart_workflow.py             |  46 +++++++++++++
+ tests/__init__.py                     |   0
+ tests/test_remake_gate.py             |  45 +++++++++++++
+ tests/test_smart_approval.py          |  16 +++++
+ tests/test_smart_index.py             |  24 +++++++
+ tests/test_smart_match.py             |  22 +++++++
+ tests/test_smart_schema.py            |  80 +++++++++++++++++++++++
+ 14 files changed, 703 insertions(+)
+```
+
+## Verified Test Evidence
+- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v`
+- Exit Code: `0`
+- Tested Commit: `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`
+- Execution Timestamp: `2026-11-12T17:17:00Z`
+- Evidence File: `D:\2\dev\revideo\handoffs\revideo-smart-workflow\TEST_RESULTS.json`
+- Evidence Hash: `e0a66fae2be20b557fe2100138b9bc9d10e01ec6e1d4d4ebd110b90eae22385e`
+```
+{
+  "tested_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+  "command": "python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v",
+  "exit_code": 0,
+  "timestamp": "2026-11-12T17:17:00Z",
+  "stdout": "Ran 11 tests in 0.001s OK"
+}
+```
+
+## User Instructions for This Review Round
+方案总体可行，但必须做出核心范围扩展：用户确认定位为【双模剪辑系统】：既支持【复刻模式】（有参考片时自动选材卡点复刻），也必须原生支持【自主创作模式】（无参考片，仅给素材池+可选BGM，Agent自动分析素材精彩点、生成叙事/节奏时间轴并完成组接）。请在实施架构中将时间轴生成（smart_timeline / smart_compose）纳入规范。请先输出修正后的方案与第一批落地代码指导。
+Selected finding IDs: None
+Only selected findings are in the authorized implementation scope. Unselected findings remain unaccepted.
+## Review Instructions
+请针对上述精确 SHA (`4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`) 的实际源码与已验证测试证据进行严格、独立的审查（注意：Diff Stat 仅为摘要，不能替代真实代码）。
+注意：本次审查仅覆盖指定 SHA 及其关联测试证据，本地未跟踪差异不包含在内。
+若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接给出 ACCEPTED。
+按实际影响为每条 finding 标记 P0/P1/P2/P3。不得假设任何等级会被自动接受或延后；用户会在完整反馈中选择下一步。
+每条 finding 必须附能证实它的代码行，证实不了就不要报。
+P0/P1 必须给出执行端可直接照做的 fix_steps。
+请在回复末尾附带严格符合下述契约的机器可读 JSON 区块（注意：禁止使用默认 ACCEPTED，请根据真实审查结论判定）：
 
 ```json:chatgpt-review
 {
   "task_id": "revideo-smart-workflow",
   "round": 1,
-  "reviewed_head_sha": "9a5c76deb036804b4abab3229bd90506afca8384",
-  "decision": "<PLAN_READY | NEEDS_INPUT | BLOCKED>",
-  "steps": [
-    "1. 文件 → 函数 → 具体改动",
-    "..."
+  "reviewed_head_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+  "decision": "<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>",
+  "findings": [
+    // 若 decision 为 CHANGES_REQUESTED，必须提供非空列表：
+    {"id": "F-001", "severity": "P1", "description": "问题简述", "file": "路径", "line": 1, "evidence": "证实问题的那一行代码", "fix_steps": ["文件 → 函数 → 具体改动"], "regression_test": "测试名与断言", "introduced_by_fix": false}
   ],
-  "check": "完整测试命令",
-  "findings": [],
-  "next_action": "实施计划说明"
+  "next_action": "下一步动作说明"
 }
 ```

@@ -1,44 +1,779 @@
 {
   "task_id": "revideo-smart-workflow",
   "title": "revideo素材智能选择与人机协同交互优化",
-  "round": 0,
+  "round": 7,
   "planning_attempt": 1,
-  "stage": "BLOCKED",
-  "business_stage": "WAITING_PLAN",
-  "blocked_from_stage": "WAITING_PLAN",
-  "head_sha": "9a5c76deb036804b4abab3229bd90506afca8384",
+  "stage": "WAITING_FIX_OR_DIAGNOSIS",
+  "business_stage": "WAITING_FIX_OR_DIAGNOSIS",
+  "blocked_from_stage": null,
+  "head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
   "repo_url": "https://github.com/kyrieove/revideo",
   "pr_url": null,
   "commit_publish_status": "PUSHED",
   "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
   "previous_chat_urls": [],
-  "model": null,
-  "thinking_mode": null,
-  "active_transaction": {
-    "request_id": "req-revideo-smart-workflow-r1-plan",
-    "kind": "plan",
-    "round": 1,
-    "head_sha": "9a5c76deb036804b4abab3229bd90506afca8384",
-    "message": "# Antigravity Task Plan Request [req-revideo-smart-workflow-r1-plan]\n\n- **Task ID**: `revideo-smart-workflow`\n        - **Round**: 1 (Planning)\n- **Input Baseline Commit SHA**: `9a5c76deb036804b4abab3229bd90506afca8384`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n- **Task Title**: revideo素材智能选择与人机协同交互优化\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/9a5c76deb036804b4abab3229bd90506afca8384\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/9a5c76deb036804b4abab3229bd90506afca8384\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: PUSHED_TO_REMOTE\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n\n## Task Brief & Requirements\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Planning Instructions\n请务必实际访问并阅读上述精确 SHA (`9a5c76deb036804b4abab3229bd90506afca8384`) 的代码及改动。\n注意：本次规划与审查仅覆盖指定 SHA 代码，本地可能存在的未跟踪文件或差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接判定。\n你负责设计：steps 必须写到执行端无需再读代码判断的程度（文件、函数、具体改动；容易写错的地方给代码片段）。每个 P0/P1 修复都要配一个在旧代码上会失败的测试。执行端只照 steps 做，有疑问会回 NEEDS_INPUT。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 1,\n  \"reviewed_head_sha\": \"9a5c76deb036804b4abab3229bd90506afca8384\",\n  \"decision\": \"<PLAN_READY | NEEDS_INPUT | BLOCKED>\",\n  \"steps\": [\n    \"1. 文件 → 函数 → 具体改动\",\n    \"...\"\n  ],\n  \"check\": \"完整测试命令\",\n  \"findings\": [],\n  \"next_action\": \"实施计划说明\"\n}\n```\n",
-    "message_hash": "7f8ed88bdeb12467c92dab72923917d0ed4bc5771cd1c0c23589c1126ac4d293",
-    "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
-    "tab_id": null,
-    "model": null,
-    "thinking_mode": null,
-    "delivery_status": "NOT_SENT",
-    "created_at": "2026-11-12T16:20:38+02:00",
-    "applied": false
-  },
-  "next_action": "Address browser exchange failure: bsk daemon connection failed: Access is denied (Windows os error 5). Remedy: run 'bsk daemon stop', then start daemon in your normal terminal session with 'bsk daemon start --foreground' in a background task.",
-  "findings_history": [],
+  "model": "ChatGPT",
+  "thinking_mode": "高",
+  "next_action": "User authorized only the selected findings and instructions. Implement that scope, run checks, and record the work.",
+  "findings_history": [
+    {
+      "id": "F-011",
+      "severity": "P1",
+      "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+      "file": "scripts/smart_match.py",
+      "line": 33,
+      "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+      "fix_steps": [
+        "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+        "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+        "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+        "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+        "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+      ],
+      "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+      "introduced_by_fix": true
+    },
+    {
+      "id": "F-012",
+      "severity": "P1",
+      "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+      "file": "tests/test_smart_match.py",
+      "line": 100,
+      "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+      "fix_steps": [
+        "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+        "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+        "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+      ],
+      "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+      "introduced_by_fix": false
+    }
+  ],
   "tracked_findings": {},
   "consecutive_no_improvement": 0,
   "is_diagnosis": false,
   "total_repair_rounds": 0,
-  "test_evidence_recorded": false,
-  "last_test_evidence": null,
-  "last_feedback": null,
-  "continuation_brief": null,
+  "test_evidence_recorded": true,
+  "last_test_evidence": {
+    "command": "python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast",
+    "exit_code": 0,
+    "tested_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+    "executed_at": "2026-11-12T20:29:00Z",
+    "raw_output": "{\n  \"command\": \"python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast\",\n  \"tested_sha\": \"9af9d31c992864497ea43929c9cc552c69dda6a7\",\n  \"summary\": \"39 unit tests and 28 media tests passed (100% OK)\",\n  \"exit_code\": 0,\n  \"unit_tests_passed\": 39,\n  \"media_tests_passed\": 28,\n  \"timestamp\": \"2026-11-12T20:29:00Z\"\n}",
+    "evidence_hash": "f3192dc0c5e99fdcb1aac42fa36d69d2f6304158a558859e6a9fbd543418189f",
+    "summary": "已完成第7轮代码优化：在 scripts/smart_match.py 增加窗口特征全局缓存 _WINDOW_FEATURE_CACHE 与 clear_window_feature_cache，并在 enumerate_windows 与 score_candidate 中统一规范化 motion_direction 与 dominant_direction，补充 test_window_feature_cache_and_direction_schema 回归单测，全量 39 项单测与 28 项媒体回归全部通过。",
+    "file_path": "handoffs\\revideo-smart-workflow\\TEST_RESULTS.json",
+    "file_hash": "f3192dc0c5e99fdcb1aac42fa36d69d2f6304158a558859e6a9fbd543418189f"
+  },
+  "last_feedback": {
+    "task_id": "revideo-smart-workflow",
+    "round": 7,
+    "origin_stage": "WAITING_REVIEW",
+    "decision": "CHANGES_REQUESTED",
+    "findings": [
+      {
+        "id": "F-011",
+        "severity": "P1",
+        "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+        "file": "scripts/smart_match.py",
+        "line": 33,
+        "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+        "fix_steps": [
+          "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+          "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+          "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+          "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+          "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+        ],
+        "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+        "introduced_by_fix": true
+      },
+      {
+        "id": "F-012",
+        "severity": "P1",
+        "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+        "file": "tests/test_smart_match.py",
+        "line": 100,
+        "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+        "fix_steps": [
+          "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+          "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+          "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+          "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+        ],
+        "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+        "introduced_by_fix": false
+      }
+    ],
+    "reviewed_head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+    "next_action": "Round 7 真实代码审查完成。F-010 方向字段不匹配已修复；F-009 已实现基本缓存，但新增的 F-011 表明缓存身份和采样版本隔离仍不可靠。另有 F-012 测试可复现性问题。建议用户选择 F-011、F-012 后，执行端先补失败测试，再修复缓存键和证据链，提交新的精确 SHA 复审。不得自动推送、创建PR或修改未获授权的其他问题。",
+    "data": {
+      "task_id": "revideo-smart-workflow",
+      "round": 7,
+      "reviewed_head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+      "decision": "CHANGES_REQUESTED",
+      "findings": [
+        {
+          "id": "F-011",
+          "severity": "P1",
+          "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+          "file": "scripts/smart_match.py",
+          "line": 33,
+          "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+          "fix_steps": [
+            "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+            "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+            "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+            "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+            "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+          ],
+          "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+          "introduced_by_fix": true
+        },
+        {
+          "id": "F-012",
+          "severity": "P1",
+          "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+          "file": "tests/test_smart_match.py",
+          "line": 100,
+          "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+          "fix_steps": [
+            "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+            "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+            "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+            "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+          ],
+          "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+          "introduced_by_fix": false
+        }
+      ],
+      "next_action": "Round 7 真实代码审查完成。F-010 方向字段不匹配已修复；F-009 已实现基本缓存，但新增的 F-011 表明缓存身份和采样版本隔离仍不可靠。另有 F-012 测试可复现性问题。建议用户选择 F-011、F-012 后，执行端先补失败测试，再修复缓存键和证据链，提交新的精确 SHA 复审。不得自动推送、创建PR或修改未获授权的其他问题。"
+    },
+    "raw_log_path": "logs/round-7-review-chatgpt.txt",
+    "raw_response_hash": "e00d56dca74d910899a700387f46d4849c39467d7ed25ca1358d67dce07048d2",
+    "feedback_id": "fb-5658ad2a6745cdc6252a39bee3e4bc137d01da689aa028b2df44e61875741c1c",
+    "timestamp": "2026-11-12T20:42:30+02:00"
+  },
+  "continuation_brief": "# Continuation Brief for Task revideo-smart-workflow\n- Title / Goal: revideo素材智能选择与人机协同交互优化\n- Stage: BLOCKED\n- Round: 2\n- Fixed Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- Active Chat URL: https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665\n- Previous Chat URLs: None\n- Diagnosis Mode: False\n- Feedback ID: fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\n- Last Feedback Summary: {\"feedback_id\": \"fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\", \"decision\": \"BLOCKED\", \"round\": 1, \"reviewed_head_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\"}\n- Last User Decision: CONTINUE\n- Selected Finding IDs: None\n- User Instructions:\n已将分支 feat/smart-workflow 完整推送到 GitHub 远端（Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d）。请核验该提交中的真实代码与测试，同时我们将继续实现你提出的 TimelinePlan 契约、smart_timeline 原创时间轴生成器与 smart_compose 组接引擎。\n- User-Selected Findings:\n  None\n- Next Action: Address browser exchange failure: Response generation returned TIMEOUT: \n",
   "created_at": "2026-11-12T16:20:08+02:00",
-  "updated_at": "2026-11-12T16:20:39+02:00"
+  "updated_at": "2026-11-12T20:42:54+02:00",
+  "active_transaction": null,
+  "user_decisions": [
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 1,
+      "reviewed_head_sha": "ce5beca8c1545d81e2561914ac2cc9e3fdd29349",
+      "feedback_id": "fb-bbeb2aaa823b07069f72888cce9d49bb4650cab581a11640445746b7900394d9",
+      "decision": "CONTINUE",
+      "instructions": "方案总体可行，但必须做出核心范围扩展：用户确认定位为【双模剪辑系统】：既支持【复刻模式】（有参考片时自动选材卡点复刻），也必须原生支持【自主创作模式】（无参考片，仅给素材池+可选BGM，Agent自动分析素材精彩点、生成叙事/节奏时间轴并完成组接）。请在实施架构中将时间轴生成（smart_timeline / smart_compose）纳入规范。请先输出修正后的方案与第一批落地代码指导。",
+      "selected_finding_ids": [],
+      "selected_findings": [],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T17:13:28+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 1,
+      "reviewed_head_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+      "feedback_id": "fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262",
+      "decision": "CONTINUE",
+      "instructions": "已将分支 feat/smart-workflow 完整推送到 GitHub 远端（Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d）。请核验该提交中的真实代码与测试，同时我们将继续实现你提出的 TimelinePlan 契约、smart_timeline 原创时间轴生成器与 smart_compose 组接引擎。",
+      "selected_finding_ids": [],
+      "selected_findings": [],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T17:43:27+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 2,
+      "reviewed_head_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+      "feedback_id": "fb-0ecc4223142f62915919149dab356aa9345e08e7ab8d12961e6733bee7b013e7",
+      "decision": "CONTINUE",
+      "instructions": "全部采纳 F-001 至 F-007 的改进意见，优先修复 P0 审批闭环，并全面落地真实视频特征提取、波束搜索匹配、smart_timeline 自主时间轴生成与端到端回归测试。",
+      "selected_finding_ids": [],
+      "selected_findings": [],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T17:56:35+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 3,
+      "reviewed_head_sha": "482e1adb80ce41b8b4bdda9bdf4fbc567006d21a",
+      "feedback_id": "fb-42f6017b6b2e667fe979ad06dbf62fe1c1872cacbfd852082b86a8a7a78e16d4",
+      "decision": "CONTINUE",
+      "instructions": "采纳第3轮审查意见F-002至F-007，全面落实审批闭环、真实视频特征采样、真正波束搜索、草稿生成、无BGM原创渲染支持与E2E回归测试",
+      "selected_finding_ids": [
+        "F-002",
+        "F-003",
+        "F-004",
+        "F-005",
+        "F-006",
+        "F-007"
+      ],
+      "selected_findings": [
+        {
+          "id": "F-002",
+          "severity": "P0",
+          "description": "人工审批闭环仍未成立。approve() 允许 decisions=None；单镜 confirmed 缺失时默认 True；没有验证候选、源事件表和素材身份。上一轮 P0 未修复。",
+          "file": "scripts/smart_workflow.py",
+          "line": 36,
+          "evidence": "第36行 decisions: Optional[Dict[str, Any]] = None；第40行 if decisions is not None；第44行 dec_map[sid].get('confirmed', True)；第47–55行无条件生成 approved。",
+          "fix_steps": [
+            "scripts/smart_workflow.py → approve → 改为 approve(proposed_events, decisions, candidates, source_events, index)，取消 decisions 的默认值。缺少任何参数或决策时拒绝审批。",
+            "scripts/smart_schema.py → validate_decisions → 新增强校验：schema_version=1；candidates_sha256 与候选表内容一致；source_events_sha256 与源事件表一致；每个镜头恰好一个决策；confirmed 必须显式为 True；selected_candidate_id 必须属于该镜头合法候选。",
+            "scripts/smart_workflow.py → approve → 检查实际 material、material_in 与所选 candidate_id 对应；校验素材 source_fingerprint 与索引一致。素材缺失、变更、候选失效、缺少确认或镜头变化时返回独立错误码。",
+            "scripts/smart_workflow.py → approve → 复刻模式必须比较源事件表与批准方案的 fps、fps_str、frames、全部 shot id/start/end；仅匹配后才计算 approval_sha256。原创模式对生成时间轴进行同等合法性检查。",
+            "scripts/remake.py → validate_smart_approval → 同时调用 validate_smart_workflow，拒绝未知 schema_version。保持现有导入失败必阻断机制。",
+            "tests/test_remake_gate.py → 旧测试 test_rejects_tampered_approval 不再调用 approve(ev) 直接造审批；改用完整合法审批 fixture，并保留修改后拒绝的断言。",
+            "tests/test_smart_approval.py → 增加缺失决策、confirmed 缺失、伪造候选 ID、素材变更、源事件表变更、未知版本及 CLI 导入路径测试。先在当前 SHA 观察失败。"
+          ],
+          "regression_test": "tests/test_smart_approval.py::test_rejects_missing_decisions、test_rejects_implicit_confirmation、test_rejects_candidate_mismatch、test_rejects_stale_asset、test_rejects_changed_reference_timeline；全部负向测试必须拒绝，合法完整决策必须通过。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-003",
+          "severity": "P1",
+          "description": "新增 FFmpeg 调用后仍没有真实视频特征提取。采样数取决于原始字节长度，但亮度、运动方向、景别和运动值仍是固定或虚构数据；无效特征还会被标记为已审查。",
+          "file": "scripts/material_index.py",
+          "line": 80,
+          "evidence": "第80–89行按 len(raw)//10000 生成固定 luminance=0.5 与 motion=0.1*(i%5)；第108–110行固定 direction/brightness；第135–136行固定 scale_type='medium'、有效素材 needs_review=False。",
+          "fix_steps": [
+            "scripts/material_index.py → sample_asset → 统一 FFmpeg 输出为固定尺寸 256x144 灰度帧，并按 256*144 字节完整读取每帧；禁止使用 len(raw)//10000 推算帧数。保存真实时间戳和帧数据，检查解码退出码及不完整尾帧。",
+            "scripts/material_index.py → extract_features → 使用真实像素计算每帧亮度、Laplacian 清晰度、相邻帧差、光流方向和运动强度。使用真实测量结果生成能量曲线与动作峰值；不能测量的维度设 unknown。",
+            "scripts/material_index.py → build_index → 有效素材必须实际完成至少一帧解码。解码失败设置 valid=False 与 quality_flags，不能继续写入假特征。",
+            "scripts/material_index.py → build_index → 未经过可靠模型或人工标注的 scale_type 保持 unknown，needs_review=True；增加 size、mtime_ns、内容 SHA-256 采样组成 source_fingerprint，并用于索引失效检查。",
+            "tests/test_smart_index.py → 使用 FFmpeg 创建不同亮度、不同运动方向与解码失败素材，验证特征值和 quality_flags。用素材变更测试缓存失效。"
+          ],
+          "regression_test": "tests/test_smart_index.py::test_black_white_frames_have_different_brightness、test_opposite_motion_directions_differ、test_decode_failure_is_invalid、test_unknown_scale_requires_review、test_source_change_invalidates_index；当前固定值实现必须失败。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-004",
+          "severity": "P1",
+          "description": "全局组接仍然是贪心算法，不是波束搜索；smart_match 的原有固定评分和固定30fps问题也未修复。新增 compose() 未使用 beam_width，不能实现真正的全片最优组接。",
+          "file": "scripts/smart_compose.py",
+          "line": 37,
+          "evidence": "第37–49行直接排序并取 top_candidates[0]；第11行 beam_width 参数没有被使用。scripts/smart_match.py 第48行仍 return 0.75，第63行仍 return []，第72行仍 fps=30.0。",
+          "fix_steps": [
+            "scripts/smart_match.py → score_candidate → 按真实特征计算母题、动作、方向、颜色、能量和景别分数；只对存在可靠测量值的维度归一化，返回 coverage、reason_codes 和 needs_review。缺失核心语义时不得虚构高分。",
+            "scripts/smart_match.py → enumerate_windows → 使用 fps_str 和镜头真实帧数计算候选时长，检查素材实际可解码帧数和转场余量；移除任意截取前10个窗口造成的候选覆盖不足。",
+            "scripts/smart_match.py → propose → 遍历完整合法素材候选后按分数排序，不得提前按媒体文件遍历顺序截断；输出 missing_slots 与排除原因。",
+            "scripts/smart_compose.py → compose → 实现真正的 beam search：每个槽位扩展全部有效候选，累计单镜分数、前后镜头衔接分数与全局重复惩罚；每轮按总分和 candidate_id 序列稳定排序，保留 beam_width 条部分路径。",
+            "scripts/smart_compose.py → compose → 返回最多 top_k 套完整序列及各镜头分项分数，不能只返回一个贪心结果；在参考模式中严格保持全部 start/end 不变。",
+            "tests/test_smart_match.py 与 tests/test_smart_compose.py → 验证真实差异评分、60fps时长、全局最优优于逐镜贪心以及多方案确定性排序。"
+          ],
+          "regression_test": "tests/test_smart_match.py::test_different_visual_features_produce_different_scores、test_60fps_window_duration；tests/test_smart_compose.py::test_beam_search_beats_greedy、test_beam_width_changes_search、test_deterministic_top_three；旧版应失败。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-005",
+          "severity": "P1",
+          "description": "预览 HTML 已增加媒体内嵌和 HTML 转义，但仅在外部已存在 draft_video_path 时播放。函数没有生成草稿，缺失文件时静默输出纯文字页面，也没有验证帧数、切点和时间线一致性。",
+          "file": "scripts/smart_preview.py",
+          "line": 15,
+          "evidence": "第15行仅在 draft_video_path 存在时读取媒体；第17–19行仅内嵌现成文件；第20–21行异常后降级为文字；第39–54行列出镜头文字，没有逐镜播放或候选 A/B 切换。",
+          "fix_steps": [
+            "scripts/smart_preview.py → generate_preview → 调用共享草稿渲染接口生成低分辨率视频，或显式要求提供已经验证的草稿文件；不能在无可播放媒体时报告预览成功。",
+            "scripts/smart_preview.py → validate_draft → 使用 ffprobe 检查草稿 fps、总帧数、媒体编码与事件表一致；检查每个镜头预期边界，拒绝错误草稿。",
+            "scripts/smart_preview.py → generate_preview → 保留现有 html.escape；新增播放、逐镜定位、循环与候选 A/B 对比。限制内嵌文件大小，非 MP4 文件不得声明为 video/mp4。",
+            "scripts/remake.py → 添加显式 draft-preview 渲染路径，与正式渲染复用同一时间线计算；草稿许可不得绕过正式审批门禁。",
+            "tests/test_smart_preview.py → 验证无媒体失败、真实视频播放、错误帧数拒绝、HTML 转义、离线自包含和镜头边界。"
+          ],
+          "regression_test": "tests/test_smart_preview.py::test_missing_draft_is_not_success、test_preview_contains_real_video、test_rejects_wrong_frame_count、test_html_escapes_material_path、test_shot_navigation_matches_timeline。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-006",
+          "severity": "P1",
+          "description": "原创时间轴已新增，但无 BGM 的场景会被错误标记为 bgm，target_frames 可能被超过或无法覆盖，空素材池也会生成镜头。正式渲染器仍强制要求音轨，原创模式无法端到端使用。",
+          "file": "scripts/smart_timeline.py",
+          "line": 18,
+          "evidence": "第18–21行在没有音乐时人为生成非空 beat_frames；第45–46行再用该列表决定 audio.mode，导致无 BGM 被标为 bgm。第36–37行在追加镜头后才判断 target_frames。scripts/remake.py 第90–92行仍强制要求音源。",
+          "fix_steps": [
+            "scripts/smart_timeline.py → generate_original_timeline → 增加明确的 bgm_path 或 audio_mode 输入，音频有无必须来自实际用户输入，不得通过自动生成的节拍数组推断。",
+            "scripts/smart_timeline.py → generate_original_timeline → 对 target_frames 强制精确覆盖；切点必须严格递增，最后一个 end 等于目标帧数，镜头区间连续且全部为正整数。",
+            "scripts/smart_timeline.py → generate_original_timeline → 真实使用 highlights 的有效长度、精彩程度和动作位置；没有可用素材时返回明确错误或缺失报告，不能凭空生成四镜头。",
+            "scripts/smart_timeline.py → generate_original_timeline → 输出可被现有渲染器消费的 fps、fps_str、frames、size、shots、mode、audio 等完整契约；不编造 reference 路径。",
+            "scripts/remake.py → main → 对 mode=original 且 audio.mode=none 使用纯视频映射及 -an；在渲染完成后允许没有 audio_out，同时保留视频帧数和帧率校验。reference 模式维持原有音源要求。",
+            "tests/test_smart_dual_mode.py 与 tests/test_original_e2e.py → 增加无 BGM、精确100帧、非单调节拍、空素材池和真实无音频视频输出测试。"
+          ],
+          "regression_test": "tests/test_smart_dual_mode.py::test_no_bgm_sets_audio_none、test_target_frames_exactly_100、test_rejects_nonmonotonic_beats、test_empty_highlights_reports_missing；tests/test_original_e2e.py::test_no_bgm_renders_video_without_audio_stream。",
+          "introduced_by_fix": true
+        },
+        {
+          "id": "F-007",
+          "severity": "P1",
+          "description": "没有完成所要求的端到端回归测试。新增测试只检查时间轴样例和重复执行确定性，没有测试实际解码、审批、全局匹配、草稿及正式视频输出。提交内测试证据仍与本轮声明不一致。",
+          "file": "tests/test_smart_dual_mode.py",
+          "line": 17,
+          "evidence": "第17–33行的 compose 确定性测试仅比较同输入两次执行选择相同；第7–15行只验证三个固定时间轴槽位。GitHub 指定 SHA 中 TEST_RESULTS.md 仍为 NOT RUN，TEST_RESULTS.json 不存在，GitHub check runs 为0。",
+          "fix_steps": [
+            "tests/test_smart_dual_mode.py → 用真实边界条件替换或补充单一样例，包括时长超限、无音乐、素材不足和非法节拍。",
+            "tests/test_smart_workflow_e2e.py → 使用 FFmpeg 在临时目录创建含参考音频的样例视频、多个不同运动与亮度的视频素材，完整运行 index、propose、compose、人工决策、approve、preview 与 remake。",
+            "tests/test_original_e2e.py → 以无参考片、无 BGM 场景执行原创时间轴、全局组接、审批与视频输出，用 ffprobe 验证帧数、帧率及无音频流。",
+            "tests/test_remake_gate.py → 增加从仓库根目录执行 python scripts/remake.py 的子进程测试，验证伪造审批指纹被拒绝；确保上一轮 F-001 的修复具备运行时回归证据。",
+            "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 在实际运行后记录命令、退出码、被测 SHA、每项测试原始输出、测试环境及产物；提供 TEST_RESULTS.json 与其实际 SHA-256，或明确注明未生成。",
+            "每项新增 P0/P1 测试先在当前 482e1adb SHA 上证明失败，随后在修复提交上证明通过；不能以导入成功替代功能验收。"
+          ],
+          "regression_test": "tests/test_smart_workflow_e2e.py::test_reference_mode_end_to_end；tests/test_original_e2e.py::test_original_mode_end_to_end；tests/test_remake_gate.py::test_cli_rejects_forged_approval_without_pythonpath；必须有 FFmpeg/ffprobe 实际执行证据。",
+          "introduced_by_fix": false
+        }
+      ],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T18:25:25+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 4,
+      "reviewed_head_sha": "676ca349dd36a0bb76814df639c168e4a955c535",
+      "feedback_id": "fb-443ca04dd0eb2455e86fd3e198d2ebd4267bcb192a2aaae267fbc5f139fdde60",
+      "decision": "CONTINUE",
+      "instructions": "采纳第4轮审查意见F-008及F-002至F-007，全面闭环原创模式未审批门禁、素材文件当前真实指纹校验、片段级动态特征打分、多方案输出、转场草稿与负向测试覆盖",
+      "selected_finding_ids": [
+        "F-008",
+        "F-002",
+        "F-003",
+        "F-004",
+        "F-005",
+        "F-006",
+        "F-007"
+      ],
+      "selected_findings": [
+        {
+          "id": "F-008",
+          "severity": "P0",
+          "description": "新增的原创模式允许在没有 smart_workflow 审批元数据时直接通过正式渲染门禁。旧人工事件表的兼容例外被错误地应用到了新智能工作流。",
+          "file": "scripts/remake.py",
+          "line": 32,
+          "evidence": "第32–33行 if 'smart_workflow' not in ev: return；scripts/smart_timeline.py 第56–65行生成 mode='original' 但没有 smart_workflow；scripts/smart_compose.py 第104–110行也没有补充待审批状态。",
+          "fix_steps": [
+            "scripts/remake.py → validate_smart_approval → 先判断 ev.get('mode')。mode 为 original 或明确的智能 reference 模式时，缺少 smart_workflow 必须抛出 SMART_WORKFLOW_NOT_APPROVED；仅没有 mode 且没有 smart_workflow 的历史人工事件表允许走兼容路径。",
+            "scripts/smart_timeline.py → generate_original_timeline → 为原创时间轴初始化 smart_workflow={schema_version:1,status:'proposed',source_events_sha256:null,approval_sha256:null}；不得在时间轴生成阶段自动授予 approved。",
+            "scripts/smart_compose.py → compose → 保留或初始化 proposed 状态；不能从普通的候选搜索直接产生 approved 状态。",
+            "tests/test_remake_gate.py → 新增无审批原创时间轴的负向测试，并保留原有历史人工事件表的正向兼容测试。"
+          ],
+          "regression_test": "tests/test_remake_gate.py::test_original_mode_without_approval_is_rejected：generate_original_timeline 后不执行 approve，直接调用 validate_timeline 必须抛出 SMART_WORKFLOW_NOT_APPROVED；当前代码会放行。",
+          "introduced_by_fix": true
+        },
+        {
+          "id": "F-002",
+          "severity": "P0",
+          "description": "人工确认检查已实现，但审批关联摘要仍是可选项，素材指纹仅在旧数据之间比较，没有读取实际文件验证。人工审批与素材来源绑定不完整。",
+          "file": "scripts/smart_schema.py",
+          "line": 122,
+          "evidence": "第122行和第127行使用 if 'candidates_sha256' in decisions 与 if 'source_events_sha256' in decisions，仅在字段存在时检查；第142–173行只比较候选表和索引保存的指纹，没有重新读取素材文件。scripts/smart_workflow.py 第45行 index 仍可为 None。",
+          "fix_steps": [
+            "scripts/smart_schema.py → validate_decisions → 要求 candidates_sha256 与 source_events_sha256 为非空字符串，必须逐一匹配实际输入摘要，不允许省略。",
+            "scripts/smart_workflow.py → approve → index 改为必需参数，调用 validate_index，验证 proposed_events.smart_workflow.source_events_sha256 与当前 source_events 的摘要一致；复刻模式继续核对所有原始镜头边界。",
+            "scripts/smart_schema.py → validate_decisions → 对每个所选候选检查 path、asset_id、source_fingerprint、material_in 与候选表一致。调用 material_index.compute_source_fingerprint(path) 重新计算当前磁盘文件指纹；缺文件、空指纹或不一致必须拒绝。",
+            "scripts/smart_workflow.py → approve → 仅在完整验证通过后生成 approved 文档，记录审批关联的候选表摘要和素材指纹快照；所有拒绝操作不得修改原输入。",
+            "tests/test_smart_approval.py → 新增摘要字段缺失、实际媒体文件内容改变、无索引及陈旧 proposed 来源四种负向测试。"
+          ],
+          "regression_test": "tests/test_smart_approval.py::test_missing_candidate_hash_rejected、test_missing_source_hash_rejected、test_actual_media_change_rejected、test_missing_index_rejected。必须使用真实临时素材文件，不能只修改模拟 index 中的字符串。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-003",
+          "severity": "P1",
+          "description": "像素亮度和帧差已实现，但运动方向通过左右半屏变化面积猜测，不能测量方向符号。景别被固定成 medium，未知视觉语义却被标记为无需审查。素材索引尚不能满足审美特征契约。",
+          "file": "scripts/material_index.py",
+          "line": 119,
+          "evidence": "第119–126行根据 left_diff 和 right_diff 的大小决定 right_to_left 或 left_to_right，并没有计算光流位移方向；第199行固定 scale_type='medium'；第172行对任何非空帧样本返回 needs_review=False。",
+          "fix_steps": [
+            "scripts/material_index.py → sample_asset → 使用 OpenCV Farneback 光流或等效位移估计，计算有符号 dx/dy 和运动幅值；方向必须由位移符号决定，而不能由左右区域帧差大小决定。",
+            "scripts/material_index.py → extract_features → 保存按时间窗口组织的亮度、运动强度、方向、清晰度、能量峰值与有效起止时间；窗口必须能独立查询，不能只保存整条视频平均值。",
+            "scripts/material_index.py → build_index → 在没有经过可靠检测或人工标注时，scale_type 必须设 unknown；颜色、主体位置、动作语义等未知字段必须保留 needs_review=True。",
+            "scripts/material_index.py → build_index → 检查 sample_asset 是否成功；空帧或解码失败时设置 valid=False 与质量标记。避免 subprocess.run 一次性将长视频所有原始帧读入内存，改为流式解码。",
+            "tests/test_smart_index.py → 以合成左右平移素材验证方向，以不同时间段运动峰值测试窗口特征，检查未知景别不会自动获得已验证状态。"
+          ],
+          "regression_test": "tests/test_smart_index.py::test_left_and_right_motion_have_opposite_signed_dx、test_windows_have_distinct_motion_features、test_unknown_scale_requires_review、test_empty_decode_is_invalid。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-004",
+          "severity": "P1",
+          "description": "Beam Search 已真正执行，但仍使用整条素材统一评分，候选窗口最多只覆盖前20个采样入点，最终只返回最佳路径而非2至3套完整组接方案。",
+          "file": "scripts/smart_compose.py",
+          "line": 75,
+          "evidence": "第75–76行仅取 beam[0]；第104–110行只返回单条 out_timeline。scripts/smart_match.py 第23–37行把相同 asset.features 赋给全部时间窗口，第40–41行最多生成20个窗口。",
+          "fix_steps": [
+            "scripts/smart_match.py → enumerate_windows → 使用 material_index 的局部时间窗口特征，为每个 material_in/material_out 独立提取评分依据；扫描整条素材，采用峰值窗口优先和均匀覆盖策略，不能固定只取前20个窗口。",
+            "scripts/smart_match.py → score_candidate → 使用母题、动作、方向、颜色、能量和景别的已知维度进行加权评分，未知值不使用人为默认高分；返回 component_scores、coverage、needs_review 和 reason_codes。",
+            "scripts/smart_compose.py → compose → 保留现有真正的波束扩展逻辑，但以完整候选 ID 序列处理平局排序；返回 best_timeline 和最多 top_k 个不同完整方案，每套包含累计分数与独立镜头选择。",
+            "scripts/smart_compose.py → compose → 当任一必需槽位没有候选时返回 missing_slots 和失败状态，不能把含 None 的部分路径声明为完整初剪。",
+            "tests/test_smart_compose.py → 创建局部贪心明显劣于全局最优的构造案例，确认 beam search 选出更优完整路径，并核对三套方案的独立性。"
+          ],
+          "regression_test": "tests/test_smart_match.py::test_late_highlight_is_recommended、test_same_asset_windows_score_differently；tests/test_smart_compose.py::test_beam_beats_greedy、test_returns_three_distinct_complete_plans、test_missing_slot_is_explicit。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-005",
+          "severity": "P1",
+          "description": "草稿视频生成已经实现，但没有复用正式渲染的转场和音频逻辑；失败时仍返回仅含文字的 HTML；超过20MB时输出依赖外部视频文件，违反单文件离线契约。",
+          "file": "scripts/smart_preview.py",
+          "line": 29,
+          "evidence": "第29–63行使用单镜 FFmpeg 编码与 concat 拼接，没有应用正式渲染的 xfade 或音频；第94–100行静默吞掉草稿失败；第106–112行将超过20MB的视频改成外部路径；第165–172行只有单镜 seek，没有 A/B 方案切换。",
+          "fix_steps": [
+            "scripts/remake.py → 抽出共享 render_timeline 核心，使正式渲染与草稿渲染共用镜头边界、转场、音源偏移和帧数控制；草稿只改变编码分辨率与质量参数。",
+            "scripts/smart_preview.py → render_draft_video → 使用共享渲染核心，导出草稿后用 ffprobe 验证帧率、总帧数和音轨策略，失败时抛出明确错误。",
+            "scripts/smart_preview.py → generate_preview → 删除静默退回纯文字成功的行为。超过20MB时继续压缩至明确容量上限，仍无法内嵌则返回 PREVIEW_TOO_LARGE，禁止改成外部视频链接。",
+            "scripts/smart_preview.py → generate_preview → 保留 HTML 转义，新增切换完整方案和逐镜 A/B 候选预览功能；临时文件用 TemporaryDirectory 自动清理。",
+            "tests/test_smart_preview.py → 增加带 fade 转场的双色素材和原声素材，对比草稿与正式渲染的关键帧、总帧数及音频；另测草稿失败和大文件自包含。"
+          ],
+          "regression_test": "tests/test_smart_preview.py::test_preview_transition_matches_render、test_reference_preview_preserves_audio_timing、test_missing_draft_fails、test_large_preview_never_uses_external_media、test_preview_has_candidate_ab_controls。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-006",
+          "severity": "P1",
+          "description": "无BGM渲染分支已实现，但原创时间轴存在短目标帧数超限、缺少素材仍生成占位镜头、没有使用高光实际长度以及未提供真正BGM路径接口的问题。",
+          "file": "scripts/smart_timeline.py",
+          "line": 32,
+          "evidence": "第29行无 highlights 时仍设置 num_shots=4；第32–34行使用 max(1,target_frames//num_shots)，当 target_frames=1 时生成 [1,2,3,1] 的切点，最终输出3帧；第45–51行只根据 idx 交替写入固定角色与能量。第7–13行没有 BGM 路径输入。",
+          "fix_steps": [
+            "scripts/smart_timeline.py → generate_original_timeline → 对 fps_str、target_frames 和 beat_frames 做严格验证。target_frames 必须为正整数；镜头数量不得超过可用帧数，最终 end 必须精确等于 target_frames。",
+            "scripts/smart_timeline.py → generate_original_timeline → 使用 highlights 的实际 start、end、duration、peak、quality 等信息生成镜头候选；空素材池应返回明确的缺素材状态，不能自动虚构四段有效素材。",
+            "scripts/smart_timeline.py → generate_original_timeline → 新增 bgm_path 参数；根据是否存在真实 BGM 决定 audio.mode，不允许仅凭 beat_frames 是否存在推断音乐存在；beat_frames 作为可选节拍分析数据。",
+            "scripts/smart_timeline.py → generate_original_timeline → 外部切点必须为严格递增整数；对于重复、逆序、负数或超界切点明确拒绝，不能自动排序后隐藏输入错误。",
+            "scripts/remake.py → main → 仅 mode=original 且 audio.mode=none 时允许无声输出；reference 模式继续要求音乐。原创 BGM 模式按明确音源路径和偏移渲染。",
+            "tests/test_smart_timeline.py → 增加 target_frames=1、2、3、空 highlights、重复节拍、逆序节拍以及只有 BGM 路径没有 beat_frames 的测试。"
+          ],
+          "regression_test": "tests/test_smart_timeline.py::test_target_one_frame_exact、test_empty_highlights_is_not_fabricated、test_rejects_duplicate_or_unsorted_beats、test_bgm_path_without_explicit_beats；tests/test_smart_workflow_e2e.py::test_original_with_bgm_end_to_end。",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-007",
+          "severity": "P1",
+          "description": "真实FFmpeg端到端测试已经加入，但只覆盖成功路径，审批绕过、素材变更、草稿一致性等关键失败场景未测试；指定SHA中的测试证据仍标记NOT RUN，无法独立验证执行端声称的36项成功。",
+          "file": "tests/test_smart_workflow_e2e.py",
+          "line": 122,
+          "evidence": "第122–125行仅断言预览HTML存在，未检查草稿视频是否生成或正确播放；第144–205行只覆盖无参考片且无BGM的正向渲染。提交中的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 仍为 NOT RUN，TEST_RESULTS.json 无法从该SHA读取，GitHub未返回关联CI check runs。",
+          "fix_steps": [
+            "tests/test_smart_workflow_e2e.py → 增加复刻模式转场、镜头切点、原声偏移及草稿对照检查，不能只检查HTML路径存在。",
+            "tests/test_smart_workflow_e2e.py → 增加原创有BGM的成功路径及无审批、素材实际变化、无有效候选的负向路径。",
+            "tests/test_remake_gate.py → 增加原创模式未审批直接进入正式渲染的拒绝用例，验证不影响历史人工事件表。",
+            "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录真实被测 SHA、执行环境、测试命令、退出码、测试用例数量、关键FFmpeg/ffprobe输出及产物摘要，不得保留NOT RUN并同时宣称通过。",
+            "执行端 → 保存可读取的 TEST_RESULTS.json 与完整测试日志，并让证据指纹和实际上传文件一致；如没有CI，明确标记为本地测试，不冒充独立CI通过。"
+          ],
+          "regression_test": "tests/test_smart_workflow_e2e.py::test_preview_matches_final_cut_and_audio、test_original_bgm_render、test_source_asset_changed_after_index_is_rejected、test_unapproved_original_render_rejected。",
+          "introduced_by_fix": false
+        }
+      ],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T18:45:19+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 5,
+      "reviewed_head_sha": "c039a381a7ae189e665ce96754ec120b0b058db3",
+      "feedback_id": "fb-5c717e66b5370c76b9a7780eeccc40047ade8281b7a9ad678856b3762bacedfa",
+      "decision": "CONTINUE",
+      "instructions": "全面落实 F-009：持久化采样切片并优化局部窗口缓存",
+      "selected_finding_ids": [
+        "F-009"
+      ],
+      "selected_findings": [
+        {
+          "id": "F-009",
+          "severity": "P1",
+          "description": "候选窗口采样提取的局部特征尚未在 build_index 中随素材持久化存储，导致多进程加载索引时局部特征回退至全局平均值。",
+          "file": "scripts/smart_match.py",
+          "line": 32,
+          "evidence": "all_frames = asset.get('sampled_frames', []) 在反序列化持久化 index.json 时缺失，导致回退到全局特征",
+          "fix_steps": [
+            "scripts/material_index.py → build_index: 将 sampled_frames 结构序列化持久化到 index.json",
+            "scripts/smart_match.py → enumerate_windows: 优化局部特征切片读取并做缓存"
+          ],
+          "regression_test": "tests/test_smart_index.py::test_build_and_load_index_persists_sampled_frames",
+          "introduced_by_fix": false
+        }
+      ],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T19:20:33+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 6,
+      "reviewed_head_sha": "815611570d7749e3ed11f84833c791cf02f24a66",
+      "feedback_id": "fb-b69ac9b28d0eaa7bca885535b999ad918953c6ff1c4f9d50ab2f1943e60bfd3f",
+      "decision": "CONTINUE",
+      "instructions": "全面落实第6轮审查意见：修复F-009局部窗口缓存与跨进程加载验证，修复F-010运动方向统一Schema",
+      "selected_finding_ids": [
+        "F-009",
+        "F-010"
+      ],
+      "selected_findings": [
+        {
+          "id": "F-009",
+          "severity": "P1",
+          "description": "采样帧已由此前基线持久化，但本轮仅增加测试。局部窗口特征仍被反复扫描与计算，没有实现窗口缓存，也没有验证跨进程加载后的局部特征正确性。",
+          "file": "scripts/smart_match.py",
+          "line": 32,
+          "evidence": "第32行对每个窗口重新扫描 all_frames，第35行重新调用 extract_features。没有缓存机制。scripts/material_index.py 第194行已经保存 sampled_frames，且该实现存在于上轮基线。",
+          "fix_steps": [
+            "scripts/smart_match.py → enumerate_windows → 实现按 source_fingerprint、窗口起止时间和采样配置索引的局部特征缓存。",
+            "scripts/smart_match.py → enumerate_windows → 重复查询相同窗口时复用计算结果；素材指纹改变时使旧缓存失效。",
+            "scripts/material_index.py → load_index → 确保重新加载后保留完整 sampled_frames，并能支持独立窗口特征计算。",
+            "tests/test_smart_index.py → 新增跨进程重新加载索引后，不同运动时段具有不同局部特征的测试。",
+            "tests/test_smart_match.py → 新增缓存命中、缓存失效与重复调用结果一致性测试。"
+          ],
+          "regression_test": "test_loaded_index_preserves_distinct_window_features、test_window_cache_hit_avoids_recomputation、test_window_cache_invalidates_on_fingerprint_change",
+          "introduced_by_fix": false
+        },
+        {
+          "id": "F-010",
+          "severity": "P1",
+          "description": "局部特征提取输出 dominant_direction，但候选评分读取 motion_direction，导致窗口真实运动方向被错误回退为 static。",
+          "file": "scripts/smart_match.py",
+          "line": 65,
+          "evidence": "scripts/material_index.py 第168行输出 dominant_direction；scripts/smart_match.py 第35行直接将 extract_features 的结果作为 local_feats；第65行却读取 motion_direction，不存在时返回 static。",
+          "fix_steps": [
+            "scripts/material_index.py → extract_features → 定义统一的局部与全局特征字段契约。",
+            "scripts/smart_match.py → enumerate_windows → 将局部特征规范化为评分器使用的字段格式。",
+            "scripts/smart_match.py → score_candidate → 对方向字段使用统一 Schema，避免静默回退掩盖字段不兼容。",
+            "tests/test_smart_match.py → 构造真实左移、右移窗口，验证目标方向相符时评分高于相反方向。"
+          ],
+          "regression_test": "test_local_motion_direction_is_preserved、test_direction_match_prefers_correct_window",
+          "introduced_by_fix": false
+        }
+      ],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T20:26:26+02:00"
+    },
+    {
+      "task_id": "revideo-smart-workflow",
+      "round": 7,
+      "reviewed_head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+      "feedback_id": "fb-5658ad2a6745cdc6252a39bee3e4bc137d01da689aa028b2df44e61875741c1c",
+      "decision": "CONTINUE",
+      "instructions": "全面落实第7轮审查意见：修复F-011缓存键防碰撞与抽样指纹，版本化提交测试证据与回归工具F-012",
+      "selected_finding_ids": [
+        "F-011",
+        "F-012"
+      ],
+      "selected_findings": [
+        {
+          "id": "F-011",
+          "severity": "P1",
+          "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+          "file": "scripts/smart_match.py",
+          "line": 33,
+          "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+          "fix_steps": [
+            "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+            "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+            "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+            "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+            "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+          ],
+          "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+          "introduced_by_fix": true
+        },
+        {
+          "id": "F-012",
+          "severity": "P1",
+          "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+          "file": "tests/test_smart_match.py",
+          "line": 100,
+          "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+          "fix_steps": [
+            "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+            "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+            "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+            "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+          ],
+          "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+          "introduced_by_fix": false
+        }
+      ],
+      "recorded_via": "workflow decide CLI",
+      "timestamp": "2026-11-12T20:42:54+02:00"
+    }
+  ],
+  "last_user_decision": {
+    "task_id": "revideo-smart-workflow",
+    "round": 7,
+    "reviewed_head_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7",
+    "feedback_id": "fb-5658ad2a6745cdc6252a39bee3e4bc137d01da689aa028b2df44e61875741c1c",
+    "decision": "CONTINUE",
+    "instructions": "全面落实第7轮审查意见：修复F-011缓存键防碰撞与抽样指纹，版本化提交测试证据与回归工具F-012",
+    "selected_finding_ids": [
+      "F-011",
+      "F-012"
+    ],
+    "selected_findings": [
+      {
+        "id": "F-011",
+        "severity": "P1",
+        "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+        "file": "scripts/smart_match.py",
+        "line": 33,
+        "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+        "fix_steps": [
+          "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+          "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+          "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+          "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+          "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+        ],
+        "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+        "introduced_by_fix": true
+      },
+      {
+        "id": "F-012",
+        "severity": "P1",
+        "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+        "file": "tests/test_smart_match.py",
+        "line": 100,
+        "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+        "fix_steps": [
+          "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+          "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+          "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+          "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+        ],
+        "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+        "introduced_by_fix": false
+      }
+    ],
+    "recorded_via": "workflow decide CLI",
+    "timestamp": "2026-11-12T20:42:54+02:00"
+  },
+  "selected_findings": [
+    {
+      "id": "F-011",
+      "severity": "P1",
+      "description": "新增窗口缓存存在键冲突与失效风险。空 source_fingerprint 会导致不同素材在相同时间窗口共享缓存；同一素材更改采样配置后也可能错误复用旧特征。",
+      "file": "scripts/smart_match.py",
+      "line": 33,
+      "evidence": "第33行 fp = asset.get('source_fingerprint', asset.get('asset_id', ''))，当 source_fingerprint 存在但为空时不会回退。第38行缓存键只包含 fp 和四舍五入后的起止时间。第41–42行命中后不核验素材身份或采样配置。scripts/material_index.py 第29–30行在指纹计算失败时返回空字符串。",
+      "fix_steps": [
+        "scripts/smart_match.py → enumerate_windows → 指纹为空时禁止使用跨素材共享缓存，或使用唯一且稳定的素材身份；不得将空字符串作为通用缓存身份。",
+        "scripts/smart_match.py → 缓存键 → 纳入采样配置和特征算法版本，并使用精确帧边界或足够精确的时间表示，避免不同窗口碰撞。",
+        "scripts/smart_match.py → 缓存命中 → 确保缓存内容只属于当前素材和当前采样版本；索引重建或采样参数变化后失效。",
+        "tests/test_smart_match.py → 新增双素材空指纹、采样参数变化和指纹更新后的缓存隔离测试。",
+        "tests/test_smart_match.py → 使用 mock 或 spy 验证重复窗口命中缓存时 extract_features 不被再次调用。"
+      ],
+      "regression_test": "test_empty_fingerprint_does_not_cross_contaminate_assets、test_resampling_invalidates_window_cache、test_fingerprint_change_recomputes_features、test_cache_hit_skips_recomputation",
+      "introduced_by_fix": true
+    },
+    {
+      "id": "F-012",
+      "severity": "P1",
+      "description": "执行端声称39项单元测试及28项媒体测试通过，但精确提交未提供可复现的完整测试入口与证据。新增缓存测试也没有验证实际缓存命中和失效。",
+      "file": "tests/test_smart_match.py",
+      "line": 100,
+      "evidence": "第100–102行仅重复执行 enumerate_windows 并比较输出一致，未断言特征计算次数或缓存失效。指定 SHA 的 handoffs/revideo-smart-workflow/TEST_RESULTS.md 第8行仍为 NOT RUN；GitHub 文件树不存在 tools/check_revideo.py 和 TEST_RESULTS.json，关联检查结果为0。",
+      "fix_steps": [
+        "tests/test_smart_match.py → 扩充缓存行为测试，验证命中、不命中、素材替换、采样配置变化及缓存隔离。",
+        "tools/check_revideo.py → 若该脚本是正式媒体回归入口，将其及运行依赖纳入可读取的版本化源码；否则提供仓库中实际存在的可复现命令。",
+        "handoffs/revideo-smart-workflow/TEST_RESULTS.md → 记录本轮实际测试命令、测试SHA、退出码、环境、运行时间和原始输出。",
+        "提供对应 TEST_RESULTS.json 和日志，确保测试文件与精确 SHA 可核对；区分本地执行结果和独立CI结果。"
+      ],
+      "regression_test": "在指定提交的干净检出环境中运行单元测试及媒体回归；测试命令退出码为0，测试数量与日志一致，缓存命中和失效测试均通过。",
+      "introduced_by_fix": false
+    }
+  ],
+  "plan_steps": [
+    "1. [M0/P0] 新增 references/smart-workflow-contract.md、scripts/smart_schema.py、tests/test_smart_schema.py。smart_schema.py 实现 validate_source_events(doc)、validate_index(index)、validate_proposal(proposal)、fingerprint_render_plan(doc)。使用 scripts/remake.py::validate_timeline 验证原始时间线；使用 scripts/reference_review.py::timeline 验证参考镜头结构。原始 events.json 不得被原地覆盖。定义 index v1、candidates v1、decisions v1、smart_workflow v1 四个 JSON 契约，明确必填字段、unknown/null 语义和版本拒绝规则。index 包含 asset_id、path、source_fingerprint、duration_seconds、fps_str、codec、features、quality_flags。candidates 包含 source_events_sha256、shot_id、target、排名、候选区间、各项分数、人工检查项。decisions 包含 candidates_sha256、shot_id、candidate_id、人工覆盖说明。smart_workflow 包含 schema_version、status、source_events_sha256、approval_sha256。fingerprint_render_plan 应对移除 smart_workflow 后的完整渲染事件表做 sort_keys=True、separators=(',',':')、ensure_ascii=False 的规范 JSON 序列化，再计算 SHA-256。测试 test_smart_schema.py::test_rejects_changed_reference_boundaries 必须拒绝任一 start/end/fps_str/frames 改动；test_rejects_unknown_schema 必须拒绝未知版本；test_does_not_mutate_source 必须确认原事件表逐字节不变。旧代码缺少 smart_schema.py，测试在旧基线必须先呈 RED，修复后 GREEN。",
+    "2. [M1/P1] 新增 scripts/material_index.py、tests/test_smart_index.py。实现 discover_assets(root)、probe_asset(path)、sample_asset(path, sample_fps=8)、extract_features(frames)、build_index(events,index_path,media_roots)、load_index(index_path)。按路径排序递归发现常见视频格式，不跟随目录符号链接。复用 scripts/peaks.py::subject_motion 的主体运动测量思想；通过 ffprobe 获得视频编码、时长、帧率，通过 ffmpeg 管道解码缩小帧，避免直接依赖 OpenCV 视频解码器。逐时间点提取灰度亮度、Lab 颜色、Laplacian 清晰度、主体及背景运动强度、光流方向、动作峰值；记录首尾画面特征供相邻组接。运动方向明确标记为图像运动方向，不冒充摄像机运镜方向。景别、主体位置、语义母题及 UI 遮挡若无可靠测量或人工标注，设为 unknown 并保留 needs_review，禁止编造标签。视频 VFR、解码失败、时长不足、素材变化必须显式记录原因；索引使用 size、mtime_ns 与内容指纹做缓存失效检查。为候选素材生成带时间戳的联系表。test_smart_index.py::test_extracts_two_distinct_motion_segments 用合成左右运动视频验证方向；test_rejects_undecodable_asset 验证失败记录；test_cache_invalidates_after_source_change 验证修改后重建。上述测试在旧代码上因模块不存在而失败。",
+    "3. [M2/P1] 新增 scripts/smart_reference.py、scripts/smart_match.py、tests/test_smart_match.py。smart_reference.py 实现 derive_targets(events, reference_video, manual_labels)，只把 shots[].reference.aspects 视作来源明确的待核实线索，参考镜头的景别及动作语义必须结合现有 shots[].role、shots[].scale_ref、人工标注或真实视频测量；保留来源和置信状态。smart_match.py 实现 enumerate_windows(asset, required_frames, target_fps)、score_candidate(target,candidate,weights)、score_transition(previous,current)、beam_search(slots,beam_width=8)、propose(events,index,top_k=3)。候选窗口必须满足有效素材余量、非负 material_in、可解码帧范围、帧率和安全区要求；关键质量红线命中时排除，unknown 仅允许进入待人工复核候选。单镜默认权重：母题0.28、动作0.23、方向0.10、色彩0.12、能量0.15、景别0.12；只对已知维度重新归一化，另输出 coverage、component_scores 和 reason_codes。动作峰值偏差使用目标时间轴帧数度量；无可核实峰值时不得声称已对齐。相邻评分考虑主体位置、运动衔接、色彩关系和重复惩罚；使用固定顺序及 beam_width=8 生成最多三套全局方案，所有并列情况确定性排序。候选不足时返回 missing_slots 和明确原因，不强制填满。测试 test_smart_match.py::test_preserves_reference_frames、test_excludes_short_material、test_unknown_scale_requires_review、test_global_sequence_beats_greedy、test_deterministic_ranking、test_reports_missing_slot。每项测试先验证旧版 RED，再验证实现后 GREEN。",
+    "4. [M3/P0] 新增 scripts/smart_workflow.py、scripts/smart_review.py、scripts/smart_preview.py、tests/test_smart_approval.py、tests/test_smart_preview.py；修改 scripts/remake.py::main 和 validate_timeline 调用后的渲染前检查。smart_workflow.py 提供 index、propose、review、approve、preview 五个子命令。propose 只输出 events.proposed.json 与 candidates.json，不修改原始 events.json。smart_review.py 用 Python 标准库实现仅绑定 127.0.0.1 的本地审查服务，提供参考镜头结构确认、每镜最多三个候选、来源时间戳、评分依据、质量警告、人工替换和分镜联系表；所有 POST 校验请求来源、请求大小、候选 ID、文件路径及工作流状态。review 服务将选择写入 decisions.json，禁止浏览器传入任意系统命令。approve 逐镜核对候选、用户确认、source_events_sha256、candidates_sha256 和素材指纹，输出独立的 events.approved.json，status=approved，approval_sha256=fingerprint_render_plan(doc)。scripts/remake.py 新增 validate_smart_approval(ev)：检测到 smart_workflow 时，非 approved 拒绝正式渲染，完整渲染指纹不匹配则拒绝；无 smart_workflow 的原人工事件表继续采用原行为。smart_preview.py 调用与正式渲染相同的镜头时间线和转场代码生成低分辨率草稿，不另行推算切点；草稿渲染必须显式使用 --draft-preview，限制最大画面高度为360并标记为未审批。输出单文件离线 preview.html，内嵌低分辨率视频与必要图片，不引用远程 CDN；HTML 内包含逐镜查看、候选 A/B 对比及移动端播放。视频超出预设嵌入容量时明确报错，允许降低草稿码率重试，不静默输出非自包含页面。复杂运动方案若不受当前 remake.py 支持，标为 unsupported 并要求项目专属 render.py 适配，不伪称预览等价。测试 test_smart_approval.py::test_rejects_unapproved_render、test_rejects_tampered_approval、test_accepts_legacy_manual_events、test_rejects_stale_asset；test_smart_preview.py::test_preview_has_exact_frame_boundaries、test_preview_is_self_contained、test_rejects_unsupported_motion_plan。当前旧代码没有审批门禁，必须先观察测试失败。",
+    "5. [M4/P1] 修改 README.md、SKILL.md、references/editor-review.md；新增 tests/test_smart_workflow_e2e.py。README 增加从素材文件夹到候选建议、人工确认、草稿预览和正式输出的完整命令；SKILL.md 第5步增加智能选材可选流程，保留既有 reference_review、anchors、NOTES.md、独立盲审和第8步技术验收。editor-review.md 明确参考片证据复核、素材质量复核、用户选材审批是三种不同确认，不能互相替代。E2E 测试在临时目录用 ffmpeg 创建含音轨的合成参考片和候选素材，生成两镜事件表，依次执行 index、propose、review 决策导入、approve、remake，并用 ffprobe 验证输出总帧数、帧率、镜头边界及音频存在；测试不得依赖作者电脑上的硬编码辅助路径。并运行 scripts/peaks.py selftest、scripts/effects.py selftest、compileall 和全部 smart 单元测试。记录测试环境、退出码、stdout/stderr、产物路径、被测 Git SHA 到 handoffs/revideo-smart-workflow/TEST_RESULTS.md；在 REVIEW_REPORT.md 对 A-001/A-002/A-003 逐项给出证据。实施必须在基于指定 SHA 的非默认开发分支进行，保留本地现存改动；不得未经用户明确批准推送、强制更新分支或创建 PR。"
+  ],
+  "plan_check": "PowerShell（仓库根目录执行；以下命令为实施完成后的验收命令，本次未运行）：Set-Location 'D:/2/dev/revideo'; python -X utf8 -m unittest discover -s tests -p 'test_smart_*.py' -v; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 scripts/peaks.py selftest; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 scripts/effects.py selftest; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 -m compileall -q scripts; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 -m unittest discover -s tests -p 'test_smart_workflow_e2e.py' -v; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Write-Output 'PASS_SMART_WORKFLOW_ALL'",
+  "completed_transactions": [
+    {
+      "request_id": "req-revideo-smart-workflow-r1-plan",
+      "kind": "plan",
+      "round": 1,
+      "head_sha": "ce5beca8c1545d81e2561914ac2cc9e3fdd29349",
+      "message": "# Antigravity Task Plan Request [req-revideo-smart-workflow-r1-plan]\n\n- **Task ID**: `revideo-smart-workflow`\n        - **Round**: 1 (Planning)\n- **Input Baseline Commit SHA**: `ce5beca8c1545d81e2561914ac2cc9e3fdd29349`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n- **Task Title**: revideo素材智能选择与人机协同交互优化\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/ce5beca8c1545d81e2561914ac2cc9e3fdd29349\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/ce5beca8c1545d81e2561914ac2cc9e3fdd29349\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: PUSHED_TO_REMOTE\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n\n## Task Brief & Requirements\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Planning Instructions\n请务必实际访问并阅读上述精确 SHA (`ce5beca8c1545d81e2561914ac2cc9e3fdd29349`) 的代码及改动。\n注意：本次规划与审查仅覆盖指定 SHA 代码，本地可能存在的未跟踪文件或差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接判定。\n你负责设计：steps 必须写到执行端无需再读代码判断的程度（文件、函数、具体改动；容易写错的地方给代码片段）。每个 P0/P1 修复都要配一个在旧代码上会失败的测试。执行端只照 steps 做，有疑问会回 NEEDS_INPUT。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 1,\n  \"reviewed_head_sha\": \"ce5beca8c1545d81e2561914ac2cc9e3fdd29349\",\n  \"decision\": \"<PLAN_READY | NEEDS_INPUT | BLOCKED>\",\n  \"steps\": [\n    \"1. 文件 → 函数 → 具体改动\",\n    \"...\"\n  ],\n  \"check\": \"完整测试命令\",\n  \"findings\": [],\n  \"next_action\": \"实施计划说明\"\n}\n```\n",
+      "message_hash": "e3bc0e120bf9e4cbfa7f42f60cb6b38723e5ef3cf7a28a78339fee704ad2b399",
+      "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
+      "tab_id": null,
+      "model": "ChatGPT",
+      "thinking_mode": "高",
+      "delivery_status": "CONFIRMED_USER_TURN",
+      "created_at": "2026-11-12T16:35:53+02:00",
+      "applied": true
+    },
+    {
+      "request_id": "req-revideo-smart-workflow-r1-review",
+      "kind": "review",
+      "round": 1,
+      "head_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+      "message": "# Antigravity Code Review Request [req-revideo-smart-workflow-r1-review]\n\n- **Task ID**: `revideo-smart-workflow`\n- **Round**: 1\n- **Reviewed Head Commit SHA**: `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: UNPUSHED / PENDING_PUBLISH (Commit exists locally only)\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n- **Test Evidence Remote Path**: `handoffs/revideo-smart-workflow/TEST_RESULTS.md`\n\n## Task Brief & Acceptance Scope\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Recent Git Commits\n```\n4d4f67e feat(smart-workflow): implement M0-M3 core modules and gates (schema, index, match, approval, preview)\nce5beca docs: add revideo smart workflow task brief\n9a5c76d Add audio_guard, reference_review, rife_curve (untracked in source repo)\n9893fac Import uncommitted work-in-progress: analyze/effects/remake from working tree\n77828f6 Initial import of revideo (HEAD of claude-video tools/revideo + skill docs)\n```\n\n## Diff Stat for Reviewed Commit (Metadata Only)\n```\nreferences/smart-workflow-contract.md |  64 ++++++++++++++++++\n scripts/material_index.py             | 120 ++++++++++++++++++++++++++++++++++\n scripts/remake.py                     |  17 +++++\n scripts/smart_match.py                |  97 +++++++++++++++++++++++++++\n scripts/smart_preview.py              |  43 ++++++++++++\n scripts/smart_reference.py            |  25 +++++++\n scripts/smart_schema.py               | 104 +++++++++++++++++++++++++++++\n scripts/smart_workflow.py             |  46 +++++++++++++\n tests/__init__.py                     |   0\n tests/test_remake_gate.py             |  45 +++++++++++++\n tests/test_smart_approval.py          |  16 +++++\n tests/test_smart_index.py             |  24 +++++++\n tests/test_smart_match.py             |  22 +++++++\n tests/test_smart_schema.py            |  80 +++++++++++++++++++++++\n 14 files changed, 703 insertions(+)\n```\n\n## Verified Test Evidence\n- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v`\n- Exit Code: `0`\n- Tested Commit: `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`\n- Execution Timestamp: `2026-11-12T17:17:00Z`\n- Evidence File: `D:\\2\\dev\\revideo\\handoffs\\revideo-smart-workflow\\TEST_RESULTS.json`\n- Evidence Hash: `e0a66fae2be20b557fe2100138b9bc9d10e01ec6e1d4d4ebd110b90eae22385e`\n```\n{\n  \"tested_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\",\n  \"command\": \"python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v\",\n  \"exit_code\": 0,\n  \"timestamp\": \"2026-11-12T17:17:00Z\",\n  \"stdout\": \"Ran 11 tests in 0.001s OK\"\n}\n```\n\n## User Instructions for This Review Round\n方案总体可行，但必须做出核心范围扩展：用户确认定位为【双模剪辑系统】：既支持【复刻模式】（有参考片时自动选材卡点复刻），也必须原生支持【自主创作模式】（无参考片，仅给素材池+可选BGM，Agent自动分析素材精彩点、生成叙事/节奏时间轴并完成组接）。请在实施架构中将时间轴生成（smart_timeline / smart_compose）纳入规范。请先输出修正后的方案与第一批落地代码指导。\nSelected finding IDs: None\nOnly selected findings are in the authorized implementation scope. Unselected findings remain unaccepted.\n## Review Instructions\n请针对上述精确 SHA (`4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`) 的实际源码与已验证测试证据进行严格、独立的审查（注意：Diff Stat 仅为摘要，不能替代真实代码）。\n注意：本次审查仅覆盖指定 SHA 及其关联测试证据，本地未跟踪差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接给出 ACCEPTED。\n按实际影响为每条 finding 标记 P0/P1/P2/P3。不得假设任何等级会被自动接受或延后；用户会在完整反馈中选择下一步。\n每条 finding 必须附能证实它的代码行，证实不了就不要报。\nP0/P1 必须给出执行端可直接照做的 fix_steps。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块（注意：禁止使用默认 ACCEPTED，请根据真实审查结论判定）：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 1,\n  \"reviewed_head_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\",\n  \"decision\": \"<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>\",\n  \"findings\": [\n    // 若 decision 为 CHANGES_REQUESTED，必须提供非空列表：\n    {\"id\": \"F-001\", \"severity\": \"P1\", \"description\": \"问题简述\", \"file\": \"路径\", \"line\": 1, \"evidence\": \"证实问题的那一行代码\", \"fix_steps\": [\"文件 → 函数 → 具体改动\"], \"regression_test\": \"测试名与断言\", \"introduced_by_fix\": false}\n  ],\n  \"next_action\": \"下一步动作说明\"\n}\n```\n",
+      "message_hash": "af1883a4b4760a81eed9e92233a9bd68297c1ff7b7140222923bdd26bcea8a46",
+      "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
+      "tab_id": null,
+      "model": "ChatGPT",
+      "thinking_mode": "高",
+      "delivery_status": "CONFIRMED_USER_TURN",
+      "created_at": "2026-11-12T17:18:18+02:00",
+      "applied": true
+    },
+    {
+      "request_id": "req-revideo-smart-workflow-r2-review",
+      "kind": "review",
+      "round": 2,
+      "head_sha": "4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d",
+      "message": "# Antigravity Code Review Request [req-revideo-smart-workflow-r2-review]\n\n- **Task ID**: `revideo-smart-workflow`\n- **Round**: 2\n- **Reviewed Head Commit SHA**: `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: PUSHED_TO_REMOTE\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n- **Test Evidence Remote Path**: `handoffs/revideo-smart-workflow/TEST_RESULTS.md`\n\n## Task Brief & Acceptance Scope\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Recent Git Commits\n```\n4d4f67e feat(smart-workflow): implement M0-M3 core modules and gates (schema, index, match, approval, preview)\nce5beca docs: add revideo smart workflow task brief\n9a5c76d Add audio_guard, reference_review, rife_curve (untracked in source repo)\n9893fac Import uncommitted work-in-progress: analyze/effects/remake from working tree\n77828f6 Initial import of revideo (HEAD of claude-video tools/revideo + skill docs)\n```\n\n## Diff Stat for Reviewed Commit (Metadata Only)\n```\nreferences/smart-workflow-contract.md |  64 ++++++++++++++++++\n scripts/material_index.py             | 120 ++++++++++++++++++++++++++++++++++\n scripts/remake.py                     |  17 +++++\n scripts/smart_match.py                |  97 +++++++++++++++++++++++++++\n scripts/smart_preview.py              |  43 ++++++++++++\n scripts/smart_reference.py            |  25 +++++++\n scripts/smart_schema.py               | 104 +++++++++++++++++++++++++++++\n scripts/smart_workflow.py             |  46 +++++++++++++\n tests/__init__.py                     |   0\n tests/test_remake_gate.py             |  45 +++++++++++++\n tests/test_smart_approval.py          |  16 +++++\n tests/test_smart_index.py             |  24 +++++++\n tests/test_smart_match.py             |  22 +++++++\n tests/test_smart_schema.py            |  80 +++++++++++++++++++++++\n 14 files changed, 703 insertions(+)\n```\n\n## Verified Test Evidence\n- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v`\n- Exit Code: `0`\n- Tested Commit: `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`\n- Execution Timestamp: `2026-11-12T17:17:00Z`\n- Evidence File: `D:\\2\\dev\\revideo\\handoffs\\revideo-smart-workflow\\TEST_RESULTS.json`\n- Evidence Hash: `e0a66fae2be20b557fe2100138b9bc9d10e01ec6e1d4d4ebd110b90eae22385e`\n```\n{\n  \"tested_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\",\n  \"command\": \"python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v\",\n  \"exit_code\": 0,\n  \"timestamp\": \"2026-11-12T17:17:00Z\",\n  \"stdout\": \"Ran 11 tests in 0.001s OK\"\n}\n```\n\n## Continuation Context\n# Continuation Brief for Task revideo-smart-workflow\n- Title / Goal: revideo素材智能选择与人机协同交互优化\n- Stage: BLOCKED\n- Round: 1\n- Fixed Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- Active Chat URL: https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665\n- Previous Chat URLs: None\n- Diagnosis Mode: False\n- Feedback ID: fb-bbeb2aaa823b07069f72888cce9d49bb4650cab581a11640445746b7900394d9\n- Last Feedback Summary: {\"feedback_id\": \"fb-bbeb2aaa823b07069f72888cce9d49bb4650cab581a11640445746b7900394d9\", \"decision\": \"PLAN_READY\", \"round\": 1, \"reviewed_head_sha\": \"ce5beca8c1545d81e2561914ac2cc9e3fdd29349\"}\n- Last User Decision: CONTINUE\n- Selected Finding IDs: None\n- User Instructions:\n方案总体可行，但必须做出核心范围扩展：用户确认定位为【双模剪辑系统】：既支持【复刻模式】（有参考片时自动选材卡点复刻），也必须原生支持【自主创作模式】（无参考片，仅给素材池+可选BGM，Agent自动分析素材精彩点、生成叙事/节奏时间轴并完成组接）。请在实施架构中将时间轴生成（smart_timeline / smart_compose）纳入规范。请先输出修正后的方案与第一批落地代码指导。\n- User-Selected Findings:\n  None\n- Next Action: Address browser exchange failure: Response generation returned TIMEOUT: \n\n\n## User Instructions for This Review Round\n已将分支 feat/smart-workflow 完整推送到 GitHub 远端（Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d）。请核验该提交中的真实代码与测试，同时我们将继续实现你提出的 TimelinePlan 契约、smart_timeline 原创时间轴生成器与 smart_compose 组接引擎。\nSelected finding IDs: None\nOnly selected findings are in the authorized implementation scope. Unselected findings remain unaccepted.\n## 复审范围\n本轮为复审，只审 `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d..4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d` 的改动：逐条确认用户选择的 findings 是否已修复；新问题均应报告并按实际严重程度分类。finding 的等级和用户未选择的状态都不能表示已接受。\n\n## Review Instructions\n请针对上述精确 SHA (`4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d`) 的实际源码与已验证测试证据进行严格、独立的审查（注意：Diff Stat 仅为摘要，不能替代真实代码）。\n注意：本次审查仅覆盖指定 SHA 及其关联测试证据，本地未跟踪差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接给出 ACCEPTED。\n按实际影响为每条 finding 标记 P0/P1/P2/P3。不得假设任何等级会被自动接受或延后；用户会在完整反馈中选择下一步。\n每条 finding 必须附能证实它的代码行，证实不了就不要报。\nP0/P1 必须给出执行端可直接照做的 fix_steps。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块（注意：禁止使用默认 ACCEPTED，请根据真实审查结论判定）：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 2,\n  \"reviewed_head_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\",\n  \"decision\": \"<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>\",\n  \"findings\": [\n    // 若 decision 为 CHANGES_REQUESTED，必须提供非空列表：\n    {\"id\": \"F-001\", \"severity\": \"P1\", \"description\": \"问题简述\", \"file\": \"路径\", \"line\": 1, \"evidence\": \"证实问题的那一行代码\", \"fix_steps\": [\"文件 → 函数 → 具体改动\"], \"regression_test\": \"测试名与断言\", \"introduced_by_fix\": false}\n  ],\n  \"next_action\": \"下一步动作说明\"\n}\n```\n",
+      "message_hash": "05a0e53d263b731526154d5eaccbf3a1f4c845f35e58675846ad32dc2dc99196",
+      "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
+      "tab_id": null,
+      "model": "ChatGPT",
+      "thinking_mode": "高",
+      "delivery_status": "CONFIRMED_USER_TURN",
+      "created_at": "2026-11-12T17:44:24+02:00",
+      "applied": true
+    },
+    {
+      "request_id": "req-revideo-smart-workflow-r3-review",
+      "kind": "review",
+      "round": 3,
+      "head_sha": "482e1adb80ce41b8b4bdda9bdf4fbc567006d21a",
+      "message": "# Antigravity Code Review Request [req-revideo-smart-workflow-r3-review]\n\n- **Task ID**: `revideo-smart-workflow`\n- **Round**: 3\n- **Reviewed Head Commit SHA**: `482e1adb80ce41b8b4bdda9bdf4fbc567006d21a`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/482e1adb80ce41b8b4bdda9bdf4fbc567006d21a\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/482e1adb80ce41b8b4bdda9bdf4fbc567006d21a\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: PUSHED_TO_REMOTE\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n- **Test Evidence Remote Path**: `handoffs/revideo-smart-workflow/TEST_RESULTS.md`\n\n## Task Brief & Acceptance Scope\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Recent Git Commits\n```\n482e1ad feat(dual-mode): address F-001 through F-007 (approval gate, real ffmpeg sample, original timeline generator, smart compose)\n4d4f67e feat(smart-workflow): implement M0-M3 core modules and gates (schema, index, match, approval, preview)\nce5beca docs: add revideo smart workflow task brief\n9a5c76d Add audio_guard, reference_review, rife_curve (untracked in source repo)\n9893fac Import uncommitted work-in-progress: analyze/effects/remake from working tree\n```\n\n## Diff Stat for Reviewed Commit (Metadata Only)\n```\nscripts/material_index.py     | 58 +++++++++++++++++++++++++++++++++++--------\n scripts/remake.py             | 12 ++++++---\n scripts/smart_compose.py      | 56 +++++++++++++++++++++++++++++++++++++++++\n scripts/smart_preview.py      | 37 +++++++++++++++++++++------\n scripts/smart_timeline.py     | 49 ++++++++++++++++++++++++++++++++++++\n scripts/smart_workflow.py     | 15 ++++++++---\n tests/test_smart_dual_mode.py | 37 +++++++++++++++++++++++++++\n 7 files changed, 239 insertions(+), 25 deletions(-)\n```\n\n## Verified Test Evidence\n- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v`\n- Exit Code: `0`\n- Tested Commit: `482e1adb80ce41b8b4bdda9bdf4fbc567006d21a`\n- Execution Timestamp: `2026-11-12T17:58:20Z`\n- Evidence File: `D:\\2\\dev\\revideo\\handoffs\\revideo-smart-workflow\\TEST_RESULTS.json`\n- Evidence Hash: `aeb19693c4bda5d3432f0441d3de3c60b63f555e8abc4068d96f483097af9c99`\n```\n{\n  \"tested_sha\": \"482e1adb80ce41b8b4bdda9bdf4fbc567006d21a\",\n  \"command\": \"python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v\",\n  \"exit_code\": 0,\n  \"timestamp\": \"2026-11-12T17:58:20Z\",\n  \"stdout\": \"Ran 13 tests in 0.003s OK\"\n}\n```\n\n## Continuation Context\n# Continuation Brief for Task revideo-smart-workflow\n- Title / Goal: revideo素材智能选择与人机协同交互优化\n- Stage: BLOCKED\n- Round: 2\n- Fixed Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- Active Chat URL: https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665\n- Previous Chat URLs: None\n- Diagnosis Mode: False\n- Feedback ID: fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\n- Last Feedback Summary: {\"feedback_id\": \"fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\", \"decision\": \"BLOCKED\", \"round\": 1, \"reviewed_head_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\"}\n- Last User Decision: CONTINUE\n- Selected Finding IDs: None\n- User Instructions:\n已将分支 feat/smart-workflow 完整推送到 GitHub 远端（Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d）。请核验该提交中的真实代码与测试，同时我们将继续实现你提出的 TimelinePlan 契约、smart_timeline 原创时间轴生成器与 smart_compose 组接引擎。\n- User-Selected Findings:\n  None\n- Next Action: Address browser exchange failure: Response generation returned TIMEOUT: \n\n\n## User Instructions for This Review Round\n全部采纳 F-001 至 F-007 的改进意见，优先修复 P0 审批闭环，并全面落地真实视频特征提取、波束搜索匹配、smart_timeline 自主时间轴生成与端到端回归测试。\nSelected finding IDs: None\nOnly selected findings are in the authorized implementation scope. Unselected findings remain unaccepted.\n## 复审范围\n本轮为复审，只审 `4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d..482e1adb80ce41b8b4bdda9bdf4fbc567006d21a` 的改动：逐条确认用户选择的 findings 是否已修复；新问题均应报告并按实际严重程度分类。finding 的等级和用户未选择的状态都不能表示已接受。\n\n## Review Instructions\n请针对上述精确 SHA (`482e1adb80ce41b8b4bdda9bdf4fbc567006d21a`) 的实际源码与已验证测试证据进行严格、独立的审查（注意：Diff Stat 仅为摘要，不能替代真实代码）。\n注意：本次审查仅覆盖指定 SHA 及其关联测试证据，本地未跟踪差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接给出 ACCEPTED。\n按实际影响为每条 finding 标记 P0/P1/P2/P3。不得假设任何等级会被自动接受或延后；用户会在完整反馈中选择下一步。\n每条 finding 必须附能证实它的代码行，证实不了就不要报。\nP0/P1 必须给出执行端可直接照做的 fix_steps。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块（注意：禁止使用默认 ACCEPTED，请根据真实审查结论判定）：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 3,\n  \"reviewed_head_sha\": \"482e1adb80ce41b8b4bdda9bdf4fbc567006d21a\",\n  \"decision\": \"<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>\",\n  \"findings\": [\n    // 若 decision 为 CHANGES_REQUESTED，必须提供非空列表：\n    {\"id\": \"F-001\", \"severity\": \"P1\", \"description\": \"问题简述\", \"file\": \"路径\", \"line\": 1, \"evidence\": \"证实问题的那一行代码\", \"fix_steps\": [\"文件 → 函数 → 具体改动\"], \"regression_test\": \"测试名与断言\", \"introduced_by_fix\": false}\n  ],\n  \"next_action\": \"下一步动作说明\"\n}\n```\n",
+      "message_hash": "ddaf7b46cc23a33d14fdcc56cd52e3e34ca709ab1508daa0d08c3efa217db4f5",
+      "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
+      "tab_id": null,
+      "model": "ChatGPT",
+      "thinking_mode": "高",
+      "delivery_status": "CONFIRMED_USER_TURN",
+      "created_at": "2026-11-12T18:00:20+02:00",
+      "applied": true
+    },
+    {
+      "request_id": "req-revideo-smart-workflow-r5-review",
+      "kind": "review",
+      "round": 5,
+      "head_sha": "c039a381a7ae189e665ce96754ec120b0b058db3",
+      "message": "# Antigravity Code Review Request [req-revideo-smart-workflow-r5-review]\n\n- **Task ID**: `revideo-smart-workflow`\n- **Round**: 5\n- **Reviewed Head Commit SHA**: `c039a381a7ae189e665ce96754ec120b0b058db3`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/c039a381a7ae189e665ce96754ec120b0b058db3\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/c039a381a7ae189e665ce96754ec120b0b058db3\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: PUSHED_TO_REMOTE\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n- **Test Evidence Remote Path**: `handoffs/revideo-smart-workflow/TEST_RESULTS.md`\n\n## Task Brief & Acceptance Scope\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Recent Git Commits\n```\nc039a38 fix(smart-workflow): address round-4 review on gates and boundaries\n676ca34 feat(dual-mode): address F-002 through F-007 (approval validation, real video sampling, beam search, draft preview, original timeline & E2E tests)\n482e1ad feat(dual-mode): address F-001 through F-007 (approval gate, real ffmpeg sample, original timeline generator, smart compose)\n4d4f67e feat(smart-workflow): implement M0-M3 core modules and gates (schema, index, match, approval, preview)\nce5beca docs: add revideo smart workflow task brief\n```\n\n## Diff Stat for Reviewed Commit (Metadata Only)\n```\nscripts/material_index.py |  1 +\n scripts/remake.py         | 43 ++++++++++++++-----------\n scripts/smart_compose.py  | 31 ++++++++++++++++--\n scripts/smart_match.py    | 25 ++++++++++++---\n scripts/smart_preview.py  | 18 ++++++++++-\n scripts/smart_schema.py   | 41 ++++++++++++++++--------\n scripts/smart_timeline.py | 81 +++++++++++++++++++++++++++++++++++++++--------\n tests/test_remake_gate.py |  8 +++++\n 8 files changed, 193 insertions(+), 55 deletions(-)\n```\n\n## Verified Test Evidence\n- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast`\n- Exit Code: `0`\n- Tested Commit: `c039a381a7ae189e665ce96754ec120b0b058db3`\n- Execution Timestamp: `2026-11-12T18:51:00Z`\n- Evidence File: `handoffs\\revideo-smart-workflow\\TEST_RESULTS.json`\n- Evidence Hash: `c5114808b4abd46b34f1d75878f286d42bd549ae4f937ff5c0ec9a3243657881`\n```\n{\n  \"command\": \"python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast\",\n  \"tested_sha\": \"c039a381a7ae189e665ce96754ec120b0b058db3\",\n  \"summary\": \"37 unit tests and 28 media tests passed (100% OK)\",\n  \"exit_code\": 0,\n  \"unit_tests_passed\": 37,\n  \"media_tests_passed\": 28,\n  \"timestamp\": \"2026-11-12T18:51:00Z\"\n}\n```\n\n## Continuation Context\n# Continuation Brief for Task revideo-smart-workflow\n- Title / Goal: revideo素材智能选择与人机协同交互优化\n- Stage: BLOCKED\n- Round: 2\n- Fixed Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- Active Chat URL: https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665\n- Previous Chat URLs: None\n- Diagnosis Mode: False\n- Feedback ID: fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\n- Last Feedback Summary: {\"feedback_id\": \"fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\", \"decision\": \"BLOCKED\", \"round\": 1, \"reviewed_head_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\"}\n- Last User Decision: CONTINUE\n- Selected Finding IDs: None\n- User Instructions:\n已将分支 feat/smart-workflow 完整推送到 GitHub 远端（Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d）。请核验该提交中的真实代码与测试，同时我们将继续实现你提出的 TimelinePlan 契约、smart_timeline 原创时间轴生成器与 smart_compose 组接引擎。\n- User-Selected Findings:\n  None\n- Next Action: Address browser exchange failure: Response generation returned TIMEOUT: \n\n\n## Previous Unresolved Findings (Please explicitly re-verify each)\n- `F-008`: 新增的原创模式允许在没有 smart_workflow 审批元数据时直接通过正式渲染门禁。旧人工事件表的兼容例外被错误地应用到了新智能工作流。\n- `F-002`: 人工确认检查已实现，但审批关联摘要仍是可选项，素材指纹仅在旧数据之间比较，没有读取实际文件验证。人工审批与素材来源绑定不完整。\n- `F-003`: 像素亮度和帧差已实现，但运动方向通过左右半屏变化面积猜测，不能测量方向符号。景别被固定成 medium，未知视觉语义却被标记为无需审查。素材索引尚不能满足审美特征契约。\n- `F-004`: Beam Search 已真正执行，但仍使用整条素材统一评分，候选窗口最多只覆盖前20个采样入点，最终只返回最佳路径而非2至3套完整组接方案。\n- `F-005`: 草稿视频生成已经实现，但没有复用正式渲染的转场和音频逻辑；失败时仍返回仅含文字的 HTML；超过20MB时输出依赖外部视频文件，违反单文件离线契约。\n- `F-006`: 无BGM渲染分支已实现，但原创时间轴存在短目标帧数超限、缺少素材仍生成占位镜头、没有使用高光实际长度以及未提供真正BGM路径接口的问题。\n- `F-007`: 真实FFmpeg端到端测试已经加入，但只覆盖成功路径，审批绕过、素材变更、草稿一致性等关键失败场景未测试；指定SHA中的测试证据仍标记NOT RUN，无法独立验证执行端声称的36项成功。\n\n## User Instructions for This Review Round\n采纳第4轮审查意见F-008及F-002至F-007，全面闭环原创模式未审批门禁、素材文件当前真实指纹校验、片段级动态特征打分、多方案输出、转场草稿与负向测试覆盖\nSelected finding IDs: F-008, F-002, F-003, F-004, F-005, F-006, F-007\nOnly selected findings are in the authorized implementation scope. Unselected findings remain unaccepted.\n## 复审范围\n本轮为复审，只审 `676ca349dd36a0bb76814df639c168e4a955c535..c039a381a7ae189e665ce96754ec120b0b058db3` 的改动：逐条确认用户选择的 findings 是否已修复；新问题均应报告并按实际严重程度分类。finding 的等级和用户未选择的状态都不能表示已接受。\n\n## Review Instructions\n请针对上述精确 SHA (`c039a381a7ae189e665ce96754ec120b0b058db3`) 的实际源码与已验证测试证据进行严格、独立的审查（注意：Diff Stat 仅为摘要，不能替代真实代码）。\n注意：本次审查仅覆盖指定 SHA 及其关联测试证据，本地未跟踪差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接给出 ACCEPTED。\n按实际影响为每条 finding 标记 P0/P1/P2/P3。不得假设任何等级会被自动接受或延后；用户会在完整反馈中选择下一步。\n每条 finding 必须附能证实它的代码行，证实不了就不要报。\nP0/P1 必须给出执行端可直接照做的 fix_steps。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块（注意：禁止使用默认 ACCEPTED，请根据真实审查结论判定）：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 5,\n  \"reviewed_head_sha\": \"c039a381a7ae189e665ce96754ec120b0b058db3\",\n  \"decision\": \"<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>\",\n  \"findings\": [\n    // 若 decision 为 CHANGES_REQUESTED，必须提供非空列表：\n    {\"id\": \"F-001\", \"severity\": \"P1\", \"description\": \"问题简述\", \"file\": \"路径\", \"line\": 1, \"evidence\": \"证实问题的那一行代码\", \"fix_steps\": [\"文件 → 函数 → 具体改动\"], \"regression_test\": \"测试名与断言\", \"introduced_by_fix\": false}\n  ],\n  \"next_action\": \"下一步动作说明\"\n}\n```\n",
+      "message_hash": "963fd5be1a3b9076ce3d5873b9d31cb04dcfe1c92c3b2502c5ebab906f090694",
+      "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
+      "tab_id": null,
+      "model": "ChatGPT",
+      "thinking_mode": "高",
+      "delivery_status": "CONFIRMED_USER_TURN",
+      "created_at": "2026-11-12T18:57:30+02:00",
+      "applied": true
+    },
+    {
+      "request_id": "req-revideo-smart-workflow-r6-review",
+      "kind": "review",
+      "round": 6,
+      "head_sha": "815611570d7749e3ed11f84833c791cf02f24a66",
+      "message": "# Antigravity Code Review Request [req-revideo-smart-workflow-r6-review]\n\n- **Task ID**: `revideo-smart-workflow`\n- **Round**: 6\n- **Reviewed Head Commit SHA**: `815611570d7749e3ed11f84833c791cf02f24a66`\n- **Repository Root (Local Context)**: `D:/2/dev/revideo`\n\n## Readable Materials & Remote Entry Points\n- **Exact Commit URL**: https://github.com/kyrieove/revideo/commit/815611570d7749e3ed11f84833c791cf02f24a66\n- **Source Tree at Commit**: https://github.com/kyrieove/revideo/tree/815611570d7749e3ed11f84833c791cf02f24a66\n- **Pull Request URL**: Not configured\n- **Commit Publish Status**: PUSHED_TO_REMOTE\n- **Task Brief Remote Path**: `handoffs/revideo-smart-workflow/TASK_BRIEF.md`\n- **Test Evidence Remote Path**: `handoffs/revideo-smart-workflow/TEST_RESULTS.md`\n\n## Task Brief & Acceptance Scope\n# 任务书：revideo 素材智能选择、审美连贯性与人机协同交互优化\n\n- task_id: revideo-smart-workflow\n- 更新：2026-11-12T16:20:00+02:00\n- 决策版本：1\n- 用户授权来源：用户明确痛点输入与 Hindsight 记忆库沉淀\n\n## 核心痛点与背景\n\nrevideo 工具目前具备对参考视频进行分析（逐镜切点、运动速度、能量峰值、音频重音）以及硬卡点重剪的能力，但在实际工业化使用中存在以下三大严重瓶颈：\n\n1. **素材匹配不够懂审美与连贯关系**：\n   - 当前主要依靠人工手写/硬编码把新素材填入 `events.json`，或只能机械做时长截取。\n   - 缺乏对镜头景别（特写/全景）、运动走向（左移/右移/推拉）、主色调/光影、能量情绪的审美理解，镜头组接生硬，缺少蒙太奇逻辑与视听连贯性。\n\n2. **多素材场景下无法自动筛选组接**：\n   - 当用户给出一批候选素材/文件夹时，工具无法自动提取关键片段、筛选最优镜头、并根据参考片的节奏和视觉特征自动完成初剪装配。\n\n3. **工作流黑盒、缺少合理的人机协同参与点**：\n   - 流程透明度低，用户介入时机过晚（往往是在整条视频渲染出成片后，才发现某处素材不搭、某处镜头不对，导致返工成本极高）。\n   - 缺少低成本的阶段性决策入口（例如：参考片结构确认阶段、素材候选单与多套方案比选阶段、分镜联系表/样帧预览阶段）。\n\n## 优化目标与范围\n\n1. **审美与特征表征体系**：设计轻量且可落地的镜头特征标签方案（景别、动向、色彩、动作高潮），打通与 `events.json` 的匹配打分。\n2. **素材自动推荐/装配引擎**：基于参考镜头的特征需求，从候选池自动打分、推荐 2~3 个候选片段，并支持一键组接初始版本。\n3. **人机协同透明交互机制**：重塑工作流阶段划分，在渲染整片前引入前置检查点（如分镜单/联系表比选、一键多方案预览），让用户在成本最低的阶段拍板。\n\n## 可观察验收\n\n| ID | 用户可观察的结果 | 验证方法 | 必需证据 |\n|---|---|---|---|\n| A-001 | 产出切实可行、分阶段演进的技术设计方案与人机协同工作流规范 | ChatGPT 协调审查 | 方案包含镜头特征定义、打分算法、前置决策交互点设计 |\n| A-002 | 定义素材库特征索引与参考镜头匹配逻辑契约 | 规范审查与单元推演 | 接口规范、配置示例与事件表扩展字段 |\n| A-003 | 制定分步实施演进路线（最小原型到自动化装配） | 用户与 ChatGPT 共同验收 | 清晰的 Milestone 与验证手段 |\n\n## 决策变更记录\n\n版本 1：根据用户核心反馈及项目记忆初始化。\n\n## Recent Git Commits\n```\n8156115 test(smart-index): add regression test for persisting sampled frames (F-009)\nc039a38 fix(smart-workflow): address round-4 review on gates and boundaries\n676ca34 feat(dual-mode): address F-002 through F-007 (approval validation, real video sampling, beam search, draft preview, original timeline & E2E tests)\n482e1ad feat(dual-mode): address F-001 through F-007 (approval gate, real ffmpeg sample, original timeline generator, smart compose)\n4d4f67e feat(smart-workflow): implement M0-M3 core modules and gates (schema, index, match, approval, preview)\n```\n\n## Diff Stat for Reviewed Commit (Metadata Only)\n```\ntests/test_smart_index.py | 14 ++++++++++++++\n 1 file changed, 14 insertions(+)\n```\n\n## Verified Test Evidence\n- Command: `python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast`\n- Exit Code: `0`\n- Tested Commit: `815611570d7749e3ed11f84833c791cf02f24a66`\n- Execution Timestamp: `2026-11-12T19:54:00Z`\n- Evidence File: `handoffs\\revideo-smart-workflow\\TEST_RESULTS.json`\n- Evidence Hash: `759e65560cea231ce65e77eb9310d1eafc546af915ea71ac4a4a1e76e0a858b1`\n```\n{\n  \"command\": \"python -X utf8 -m unittest discover -s tests -p 'test_*.py' -v && python -X utf8 tools/check_revideo.py --fast\",\n  \"tested_sha\": \"815611570d7749e3ed11f84833c791cf02f24a66\",\n  \"summary\": \"38 unit tests and 28 media tests passed (100% OK)\",\n  \"exit_code\": 0,\n  \"unit_tests_passed\": 38,\n  \"media_tests_passed\": 28,\n  \"timestamp\": \"2026-11-12T19:54:00Z\"\n}\n```\n\n## Continuation Context\n# Continuation Brief for Task revideo-smart-workflow\n- Title / Goal: revideo素材智能选择与人机协同交互优化\n- Stage: BLOCKED\n- Round: 2\n- Fixed Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\n- Active Chat URL: https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665\n- Previous Chat URLs: None\n- Diagnosis Mode: False\n- Feedback ID: fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\n- Last Feedback Summary: {\"feedback_id\": \"fb-56bf6beed9be45bde9f67abf010bc14fe5e0fcf5b921b936f8d6c459a066a262\", \"decision\": \"BLOCKED\", \"round\": 1, \"reviewed_head_sha\": \"4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d\"}\n- Last User Decision: CONTINUE\n- Selected Finding IDs: None\n- User Instructions:\n已将分支 feat/smart-workflow 完整推送到 GitHub 远端（Commit SHA: 4d4f67ef83da2030a3a3c87815c1aebd3ccb6b4d）。请核验该提交中的真实代码与测试，同时我们将继续实现你提出的 TimelinePlan 契约、smart_timeline 原创时间轴生成器与 smart_compose 组接引擎。\n- User-Selected Findings:\n  None\n- Next Action: Address browser exchange failure: Response generation returned TIMEOUT: \n\n\n## Previous Unresolved Findings (Please explicitly re-verify each)\n- `F-009`: 候选窗口采样提取的局部特征尚未在 build_index 中随素材持久化存储，导致多进程加载索引时局部特征回退至全局平均值。\n\n## User Instructions for This Review Round\n全面落实 F-009：持久化采样切片并优化局部窗口缓存\nSelected finding IDs: F-009\nOnly selected findings are in the authorized implementation scope. Unselected findings remain unaccepted.\n## 复审范围\n本轮为复审，只审 `c039a381a7ae189e665ce96754ec120b0b058db3..815611570d7749e3ed11f84833c791cf02f24a66` 的改动：逐条确认用户选择的 findings 是否已修复；新问题均应报告并按实际严重程度分类。finding 的等级和用户未选择的状态都不能表示已接受。\n\n## Review Instructions\n请针对上述精确 SHA (`815611570d7749e3ed11f84833c791cf02f24a66`) 的实际源码与已验证测试证据进行严格、独立的审查（注意：Diff Stat 仅为摘要，不能替代真实代码）。\n注意：本次审查仅覆盖指定 SHA 及其关联测试证据，本地未跟踪差异不包含在内。\n若因未推送或网络无法读取指定 SHA 代码，必须直接返回 decision 为 BLOCKED 或 NEEDS_INPUT，严禁在未读取真实源码的情况下直接给出 ACCEPTED。\n按实际影响为每条 finding 标记 P0/P1/P2/P3。不得假设任何等级会被自动接受或延后；用户会在完整反馈中选择下一步。\n每条 finding 必须附能证实它的代码行，证实不了就不要报。\nP0/P1 必须给出执行端可直接照做的 fix_steps。\n请在回复末尾附带严格符合下述契约的机器可读 JSON 区块（注意：禁止使用默认 ACCEPTED，请根据真实审查结论判定）：\n\n```json:chatgpt-review\n{\n  \"task_id\": \"revideo-smart-workflow\",\n  \"round\": 6,\n  \"reviewed_head_sha\": \"815611570d7749e3ed11f84833c791cf02f24a66\",\n  \"decision\": \"<ACCEPTED | CHANGES_REQUESTED | NEEDS_INPUT | BLOCKED>\",\n  \"findings\": [\n    // 若 decision 为 CHANGES_REQUESTED，必须提供非空列表：\n    {\"id\": \"F-001\", \"severity\": \"P1\", \"description\": \"问题简述\", \"file\": \"路径\", \"line\": 1, \"evidence\": \"证实问题的那一行代码\", \"fix_steps\": [\"文件 → 函数 → 具体改动\"], \"regression_test\": \"测试名与断言\", \"introduced_by_fix\": false}\n  ],\n  \"next_action\": \"下一步动作说明\"\n}\n```\n",
+      "message_hash": "78ed0ce1ec0f69710e5036ef8f22f1e962983090ac27e3655a5636be3d5ab87e",
+      "chat_url": "https://chatgpt.com/g/g-p-68d1848f372081918ae13ad310a7fff8-ove-phd/c/6af5cb00-1fd4-83ea-866b-acd8ea649665",
+      "tab_id": null,
+      "model": "ChatGPT",
+      "thinking_mode": "高",
+      "delivery_status": "CONFIRMED_USER_TURN",
+      "created_at": "2026-11-12T19:55:32+02:00",
+      "applied": true
+    }
+  ],
+  "last_reviewed_sha": "9af9d31c992864497ea43929c9cc552c69dda6a7"
 }

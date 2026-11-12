@@ -107,5 +107,60 @@ class TestSmartMatch(unittest.TestCase):
         score_w1 = score_candidate(target_right, windows_1[1])
         self.assertGreater(score_w0, score_w1)
 
+
+    def test_cache_isolation_on_empty_fingerprint_and_resampling(self):
+        """验证 F-011：空指纹素材隔离、采样版本失效与真实调用断言。"""
+        from unittest.mock import patch
+        from scripts.smart_match import enumerate_windows, clear_window_feature_cache
+        clear_window_feature_cache()
+
+        # 素材A：空指纹，运动向右
+        asset_a = {
+            "asset_id": "asset_A",
+            "source_fingerprint": "",  # 空指纹
+            "duration_seconds": 2.0,
+            "valid": True,
+            "features": {"motion_intensity": 0.5, "motion_direction": "static"},
+            "sampled_frames": [
+                {"timestamp": 0.2, "luminance": 0.5, "motion": 0.9, "direction": "right"},
+                {"timestamp": 0.5, "luminance": 0.5, "motion": 0.9, "direction": "right"}
+            ]
+        }
+        # 素材B：同样空指纹，但时间相同且运动向左
+        asset_b = {
+            "asset_id": "asset_B",
+            "source_fingerprint": "",  # 空指纹
+            "duration_seconds": 2.0,
+            "valid": True,
+            "features": {"motion_intensity": 0.2, "motion_direction": "static"},
+            "sampled_frames": [
+                {"timestamp": 0.2, "luminance": 0.2, "motion": 0.1, "direction": "left"},
+                {"timestamp": 0.5, "luminance": 0.2, "motion": 0.1, "direction": "left"}
+            ]
+        }
+
+        # 1. 验证双素材空指纹各自独立，A向右，B向左，绝不发生缓存交叉污染
+        win_a = enumerate_windows(asset_a, required_duration=1.0, step=1.0)
+        win_b = enumerate_windows(asset_b, required_duration=1.0, step=1.0)
+        self.assertEqual(win_a[0]["features"]["motion_direction"], "right")
+        self.assertEqual(win_b[0]["features"]["motion_direction"], "left")
+
+        # 2. 验证真实缓存命中：mock extract_features，第二次调用 enumerate_windows 不应再调用 extract_features
+        with patch("scripts.material_index.extract_features") as mock_extract:
+            win_a_hit = enumerate_windows(asset_a, required_duration=1.0, step=1.0)
+            mock_extract.assert_not_called()
+            self.assertEqual(win_a_hit[0]["features"]["motion_direction"], "right")
+
+        # 3. 验证采样配置变更：素材A追加了新采样帧，缓存键版本变更，必须使旧缓存失效并重新计算
+        asset_a_resampled = dict(asset_a)
+        asset_a_resampled["sampled_frames"] = list(asset_a["sampled_frames"]) + [
+            {"timestamp": 0.8, "luminance": 0.9, "motion": 0.95, "direction": "up"}
+        ]
+        with patch("scripts.material_index.extract_features") as mock_extract2:
+            mock_extract2.return_value = {"motion_direction": "up", "dominant_direction": "up", "brightness": 0.8, "motion_intensity": 0.9}
+            win_a_resampled = enumerate_windows(asset_a_resampled, required_duration=1.0, step=1.0)
+            self.assertEqual(mock_extract2.call_count, 1)
+            self.assertEqual(win_a_resampled[0]["features"]["motion_direction"], "up")
+
 if __name__ == "__main__":
     unittest.main()
