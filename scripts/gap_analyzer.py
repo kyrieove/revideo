@@ -32,6 +32,17 @@ def _labels(features: Dict[str, Any], field: str, aliases=()) -> List[str]:
     return result
 
 
+def semantic_segment_verified(segment: Dict[str, Any]) -> bool:
+    """模型推断不自动等于人工复核；旧的手工标注 source=manual 仍可用。"""
+    if not isinstance(segment, dict):
+        return False
+    return (
+        segment.get("verified") is True
+        or str(segment.get("source") or "").strip().lower()
+        in {"manual", "human_verified", "human_reviewed"}
+    )
+
+
 def evaluate_contract_match(
     asset: Dict[str, Any],
     contract: ShotContract,
@@ -194,7 +205,7 @@ def analyze_material_gaps(
                     variants.append(({
                         **a, "duration_seconds": seg_duration,
                         "features": {**base_features, **seg["features"]},
-                    }, True))
+                    }, semantic_segment_verified(seg)))
             for candidate, localized in variants:
                 ev = evaluate_contract_match(candidate, c, threshold=threshold)
                 if ev["status"] == "PASS" and not (localized or full_verified):
