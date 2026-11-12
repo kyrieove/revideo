@@ -89,6 +89,8 @@ def validate_contracts(
             raise ValueError(f"镜头 #{c.id} 与前一镜头不连续或帧区间无效")
         if c.duration_frames != c.end_frame - c.start_frame:
             raise ValueError(f"镜头 #{c.id} duration_frames 与起止帧不一致")
+        if i == 0 and c.match_cut:
+            raise ValueError(f"镜头 #{c.id} 是首镜，不能要求与不存在的上一镜进行 Match Cut")
         if not math.isfinite(c.duration_seconds) or c.duration_seconds <= 0:
             raise ValueError(f"镜头 #{c.id} duration_seconds 无效")
         if fps is not None and abs(c.duration_seconds - c.duration_frames / fps) > 0.5 / fps:
@@ -108,6 +110,44 @@ def validate_contracts(
                 raise ValueError(f"镜头 #{c.id} 与时间轴编号或边界不一致")
         prev_end = c.end_frame
     return True
+
+def evaluate_match_cut_transition(
+    previous_window: Optional[Dict[str, Any]],
+    current_window: Dict[str, Any],
+    contract: ShotContract,
+) -> Dict[str, Any]:
+    """对齐接缝两侧经过时间标注的动作姿态及归一化主体位置。
+
+    只接受窗口边界的显式 anchor，避免使用全片的平均人物位置替代切点证据。
+    """
+    if not contract.match_cut:
+        return {"status": "PASS", "reason": "not_required"}
+    if previous_window is None:
+        return {"status": "REVIEW_REQUIRED", "reason": "match_cut_missing_previous"}
+    left = previous_window.get("end_anchor")
+    right = current_window.get("start_anchor")
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return {"status": "REVIEW_REQUIRED", "reason": "match_cut_boundary_anchors_missing"}
+    left_pose, right_pose = left.get("pose"), right.get("pose")
+    if not isinstance(left_pose, str) or not left_pose or not isinstance(right_pose, str) or not right_pose:
+        return {"status": "REVIEW_REQUIRED", "reason": "match_cut_pose_unknown"}
+    if left_pose != right_pose:
+        return {"status": "GAP", "reason": "match_cut_pose_mismatch"}
+    p1, p2 = left.get("position"), right.get("position")
+    if not isinstance(p1, dict) or not isinstance(p2, dict):
+        return {"status": "REVIEW_REQUIRED", "reason": "match_cut_position_unknown"}
+    try:
+        x1, y1, x2, y2 = [float(x) for x in (p1["x"], p1["y"], p2["x"], p2["y"])]
+        tolerance = float(contract.transition_contract.get("max_position_delta", 0.16))
+    except (ValueError, TypeError, KeyError):
+        return {"status": "REVIEW_REQUIRED", "reason": "match_cut_position_unreadable"}
+    if (not all(math.isfinite(x) and 0 <= x <= 1 for x in (x1, y1, x2, y2))
+        or not math.isfinite(tolerance) or not 0 <= tolerance <= 1):
+        return {"status": "REVIEW_REQUIRED", "reason": "match_cut_invalid_coordinates"}
+    if math.hypot(x1 - x2, y1 - y2) > tolerance:
+        return {"status": "GAP", "reason": "match_cut_subject_position_mismatch"}
+    return {"status": "PASS", "reason": "match_cut_poses_and_positions_aligned"}
+
 
 def save_contracts(contracts: List[ShotContract], path: Path) -> None:
     data = {
