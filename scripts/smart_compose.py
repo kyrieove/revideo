@@ -42,7 +42,10 @@ def compose(
     raw_contracts = timeline.get("contracts") if "contracts" in timeline else options.get("contracts")
     if not raw_contracts and (
         has_contract_key or options.get("require_contracts") or timeline.get("contract_required")
-        or timeline.get("smart_workflow") is not None
+        or (
+            timeline.get("smart_workflow") is not None
+            and timeline.get("mode") != "original"
+        )
     ):
         raise MaterialDeficitError("CONTRACTS_REQUIRED: 智能叙事组接必须提供非空 contracts")
     parsed_contracts = []
