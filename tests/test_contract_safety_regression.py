@@ -13,7 +13,7 @@ from scripts.gap_analyzer import (
     evaluate_contract_match,
     generate_capture_task_sheet,
 )
-from scripts.shot_contract import ShotContract, validate_contracts
+from scripts.shot_contract import ShotContract, validate_contracts, evaluate_match_cut_transition
 from scripts.smart_match import enumerate_windows, propose
 from scripts.smart_compose import compose
 from scripts.smart_schema import fingerprint_render_plan
@@ -347,6 +347,70 @@ class ContractSafetyRegression(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "CONTRACTS_REQUIRED"):
             validate_timeline(ev)
+
+
+    def test_unreviewed_model_action_is_not_positive_evidence(self):
+        a = verified_asset()
+        a["semantic_segments"][0]["source"] = "model"
+        a["semantic_segments"][0]["verified"] = False
+        result = analyze_material_gaps([contract()], {"assets": [a]})
+        self.assertEqual(result["status"], "REVIEW_REQUIRED")
+        windows = enumerate_windows(a, 1.0)
+        self.assertFalse(any(
+            evaluate_contract_match(w, contract(), require_window_evidence=True)["status"] == "PASS"
+            for w in windows
+        ))
+
+    def test_match_cut_requires_verified_boundary_evidence(self):
+        c1 = contract()
+        c2 = ShotContract(
+            id=2, start_frame=30, end_frame=60, duration_frames=30,
+            duration_seconds=1.0, subject="player_character",
+            action="pose_drinking", camera_motion="pan_right",
+            scene_type="snow_mountain", match_cut=True,
+        )
+        a1 = {
+            "asset_id": "sword", "path": "sword.mp4", "valid": True,
+            "duration_seconds": 1.0, "semantic_verified": True,
+            "semantic_scope": "full_asset",
+            "features": {
+                "subject": "player_character", "action": "sheathing_sword",
+                "camera_motion": "pan_right", "dominant_scene": "snow_mountain",
+            },
+        }
+        a2 = {
+            "asset_id": "drink", "path": "drink.mp4", "valid": True,
+            "duration_seconds": 1.0, "semantic_verified": True,
+            "semantic_scope": "full_asset",
+            "features": {
+                "subject": "player_character", "action": "pose_drinking",
+                "camera_motion": "pan_right", "dominant_scene": "snow_mountain",
+            },
+        }
+        timeline = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 60,
+            "shots": [
+                {"id": 1, "start": 0, "end": 30},
+                {"id": 2, "start": 30, "end": 60},
+            ],
+            "contracts": [c1.to_dict(), c2.to_dict()],
+        }
+        with self.assertRaisesRegex(MaterialDeficitError, "NO_FEASIBLE_COMPOSITION"):
+            compose(timeline, {"assets": [a1, a2]})
+        a1["transition_anchors"] = [
+            {"time": 1.0, "pose": "raised_sword", "position": {"x": 0.50, "y": 0.50}, "verified": True},
+        ]
+        a2["transition_anchors"] = [
+            {"time": 0.0, "pose": "raised_sword", "position": {"x": 0.51, "y": 0.49}, "verified": True},
+        ]
+        result = compose(timeline, {"assets": [a1, a2]})
+        self.assertEqual(result["shots"][0]["material"], "sword.mp4")
+        self.assertEqual(result["shots"][1]["material"], "drink.mp4")
+        self.assertEqual(result["shots"][1]["selection"]["transition_status"], "PASS")
+
+        a2["transition_anchors"][0]["position"]["x"] = 0.95
+        with self.assertRaisesRegex(MaterialDeficitError, "NO_FEASIBLE_COMPOSITION"):
+            compose(timeline, {"assets": [a1, a2]})
 
 
 if __name__ == "__main__":
