@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from scripts.shot_contract import ShotContract, validate_contracts, evaluate_match_cut_transition
+from scripts.gap_analyzer import MaterialDeficitError, evaluate_contract_match
+from scripts.smart_match import enumerate_windows
+
 from scripts.smart_schema import (
     fingerprint_render_plan,
     validate_smart_workflow,
@@ -81,12 +85,83 @@ def approve(
     }
 
     approved = copy.deepcopy(proposed_events)
+    # 显式指定但为空的契约属于无效智能计划，不得被当作旧手工计划。
+    if (
+        ("contracts" in proposed_events and not proposed_events["contracts"])
+        or ("contracts" in source_events and not source_events["contracts"])
+    ):
+        raise MaterialDeficitError("CONTRACTS_REQUIRED: 审批计划包含空契约")
+    if (proposed_events.get("contract_required") or source_events.get("contract_required")) and not (
+        proposed_events.get("contracts") or source_events.get("contracts")
+    ):
+        raise MaterialDeficitError("CONTRACTS_REQUIRED: 智能审批缺少镜头契约")
+    raw_contracts = proposed_events.get("contracts") or source_events.get("contracts")
+    contracts_by_id = {}
+    if raw_contracts:
+        parsed = [
+            c if isinstance(c, ShotContract) else ShotContract.from_dict(c)
+            for c in raw_contracts
+        ]
+        from fractions import Fraction
+        fps = float(Fraction(str(proposed_events.get("fps_str") or proposed_events.get("fps") or 30)))
+        validate_contracts(parsed, fps=fps, shots=approved["shots"])
+        contracts_by_id = {c.id: c for c in parsed}
+        if index is None or not isinstance(index.get("assets"), list):
+            raise MaterialDeficitError("CONTRACT_INDEX_REQUIRED: 审批含镜头契约的方案必须提供最新素材索引")
+        asset_by_path = {
+            asset.get("path"): asset
+            for asset in index["assets"]
+            if isinstance(asset, dict) and asset.get("valid") is True
+        }
+    contract_audit = []
+    previous_selected_window = None
     for shot in approved.get("shots", []):
         sid = shot.get("id")
         dec = dec_map[sid]
         chosen_cand_id = dec["selected_candidate_id"]
         cand_meta = slot_cands_map[sid][chosen_cand_id]
 
+        # 审批时重新按素材索引计算窗口准入，不信任候选表里的旧分数。
+        if contracts_by_id:
+            c = contracts_by_id[sid]
+            asset = asset_by_path.get(cand_meta.get("path"))
+            if asset is None:
+                raise MaterialDeficitError(f"CONTRACT_ASSET_MISSING: 镜头 #{sid} 选中素材不在有效索引内")
+            duration = c.duration_seconds
+            windows = enumerate_windows(asset, duration)
+            selected = next(
+                (w for w in windows
+                 if abs(w.get("in_sec", -999) - float(cand_meta.get("in_sec", -999))) < 0.002),
+                None
+            )
+            if selected is None:
+                raise MaterialDeficitError(f"CONTRACT_WINDOW_MISSING: 镜头 #{sid} 的候选时间窗口不存在")
+            assessment = evaluate_contract_match(
+                selected, c, require_window_evidence=True
+            )
+            transition = evaluate_match_cut_transition(previous_selected_window, selected, c)
+            override = dec_map[sid].get("force_contract_override") is True
+            reason = str(dec_map[sid].get("override_reason") or "").strip()
+            requires_override = (
+                assessment["status"] != "PASS"
+                or transition["status"] != "PASS"
+            )
+            if requires_override and not (override and reason):
+                raise MaterialDeficitError(
+                    f"CONTRACT_NOT_VERIFIED: 镜头 #{sid} 语义状态 {assessment['status']}、"
+                    f"Match Cut 状态 {transition['status']}；"
+                    "人工强剪需要该镜头的 force_contract_override=true 和 override_reason"
+                )
+            contract_audit.append({
+                "shot_id": sid,
+                "path": selected.get("path"),
+                "in_sec": selected.get("in_sec"),
+                "status": "FORCED" if requires_override else "PASS",
+                "semantic_status": assessment["status"],
+                "transition_status": transition["status"],
+                "reason": reason if requires_override else assessment["reason"],
+            })
+            previous_selected_window = selected
         # 确保镜头素材路径与入点已应用所选决策
         shot["material"] = cand_meta.get("path")
         shot["material_in"] = cand_meta.get("in_sec")
@@ -96,6 +171,12 @@ def approve(
             "confirmed": True
         }
 
+    if contracts_by_id:
+        approved["contracts"] = [contracts_by_id[s["id"]].to_dict() for s in approved["shots"]]
+        approved["contract_audit"] = {
+            "status": "FORCED" if any(x["status"] == "FORCED" for x in contract_audit) else "PASSED",
+            "shots": contract_audit,
+        }
     fp = fingerprint_render_plan(approved)
     src_fp = fingerprint_render_plan(source_events)
     approved["smart_workflow"] = {

@@ -6,6 +6,7 @@ import math
 import os
 import subprocess
 from pathlib import Path
+import numpy as np
 from typing import Any, Dict, List, Optional, Tuple
 
 CURRENT_SCHEMA_VERSION = 1
@@ -81,60 +82,67 @@ def probe_asset(path: str) -> Dict[str, Any]:
 
 
 def sample_asset(path: str, sample_fps: int = 8, target_w: int = 160, target_h: int = 90) -> List[Dict[str, Any]]:
-    """通过 ffmpeg 管道轻量解码真实像素（160x90 灰度帧），逐帧计算亮度、帧间差动量与动向。"""
+    """分块读取 FFmpeg 灰度帧，避免把长视频全部像素加载到内存。
+
+    基于半屏差分的方向只是一种 screen-motion 代理信号，不等于 camera_motion。
+    """
+    if min(sample_fps, target_w, target_h) <= 0:
+        raise ValueError("采样帧率与图像尺寸必须大于 0")
     frame_size = target_w * target_h
     cmd = [
-        "ffmpeg", "-v", "error",
-        "-i", path,
+        "ffmpeg", "-v", "error", "-i", path,
         "-vf", f"fps={sample_fps},scale={target_w}:{target_h},format=gray",
-        "-f", "rawvideo",
-        "-"
+        "-f", "rawvideo", "-"
     ]
+    proc = None
     try:
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        raw = proc.stdout
-        if not raw or len(raw) < frame_size:
-            return []
-
-        num_frames = len(raw) // frame_size
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+        )
         samples = []
         prev_frame = None
-
-        for i in range(num_frames):
-            offset = i * frame_size
-            chunk = raw[offset : offset + frame_size]
-            
-            # 真实灰度均值计算 [0.0, 1.0]
-            avg_lum = sum(chunk) / (frame_size * 255.0)
-
+        while True:
+            chunk = proc.stdout.read(frame_size)
+            if not chunk:
+                break
+            if len(chunk) != frame_size:
+                break
+            frame = np.frombuffer(chunk, dtype=np.uint8).reshape(
+                (target_h, target_w)
+            ).astype(np.int16)
+            avg_lum = float(np.mean(frame)) / 255.0
             motion = 0.0
             direction = "static"
             if prev_frame is not None:
-                # 逐像素绝对差值计算运动强度
-                diffs = [abs(a - b) for a, b in zip(chunk, prev_frame)]
-                motion = sum(diffs) / (frame_size * 255.0)
-
-                # 左右半屏动量分布判断运镜/主体方向
+                diffs = np.abs(frame - prev_frame)
+                motion = float(np.mean(diffs)) / 255.0
                 if motion > 0.02:
-                    left_diff = sum(sum(diffs[r * target_w : r * target_w + (target_w // 2)]) for r in range(target_h))
-                    right_diff = sum(sum(diffs[r * target_w + (target_w // 2) : (r + 1) * target_w]) for r in range(target_h))
+                    left_diff = float(diffs[:, :target_w // 2].sum())
+                    right_diff = float(diffs[:, target_w // 2:].sum())
                     if left_diff > right_diff * 1.25:
                         direction = "right_to_left"
                     elif right_diff > left_diff * 1.25:
                         direction = "left_to_right"
                     else:
                         direction = "pan"
-
-            prev_frame = chunk
+            prev_frame = frame
             samples.append({
-                "timestamp": round(i / float(sample_fps), 3),
+                "timestamp": round((len(samples)) / float(sample_fps), 3),
                 "luminance": round(avg_lum, 3),
                 "motion": round(motion, 3),
                 "direction": direction
             })
+        if proc.wait() != 0:
+            return []
         return samples
     except Exception:
+        if proc is not None:
+            proc.kill()
+            proc.wait()
         return []
+    finally:
+        if proc is not None and proc.stdout is not None:
+            proc.stdout.close()
 
 
 def extract_features(frames: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -177,6 +185,18 @@ def extract_features(frames: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """构建素材库全局特征索引并持久化，记录 source_fingerprint 防篡改。"""
+    # 在同一素材指纹下保留人工审核/AI 生成的语义标注。
+    # 否则用户补录或复核后重新索引，会把动作证据无声清空。
+    previous_assets = {}
+    try:
+        previous_doc = json.loads(Path(index_path).read_text(encoding="utf-8"))
+        if previous_doc.get("schema_version") == CURRENT_SCHEMA_VERSION:
+            previous_assets = {
+                a.get("path"): a for a in previous_doc.get("assets", [])
+                if isinstance(a, dict)
+            }
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
     assets = []
     for root in media_roots:
         paths = discover_assets(root)
@@ -194,6 +214,9 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
                 "fps_str": info.get("fps_str", "unknown"),
                 "codec": info.get("codec", "unknown"),
                 "sampled_frames": frames,
+                "semantic_segments": [],
+                "semantic_scope": "unknown",
+                "semantic_verified": False,
                 "features": {
                     "motion_direction": feats.get("dominant_direction", "unknown"),
                     "motion_intensity": feats.get("motion_intensity", 0.0),
@@ -204,6 +227,25 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
                 },
                 "quality_flags": [] if info.get("valid") else [info.get("error", "invalid")]
             }
+            prior = previous_assets.get(p)
+            if (
+                sf and isinstance(prior, dict)
+                and prior.get("source_fingerprint") == sf
+                and prior.get("valid") is True
+                and asset_entry["valid"]
+            ):
+                for field in ("semantic_segments", "semantic_scope", "semantic_verified"):
+                    if field in prior:
+                        asset_entry[field] = prior[field]
+                prior_feats = prior.get("features")
+                if isinstance(prior_feats, dict):
+                    for field in (
+                        "subject", "action", "actions", "action_tags",
+                        "camera_motion", "dominant_scene", "scene_tags",
+                        "start_pose", "end_pose", "subject_position"
+                    ):
+                        if field in prior_feats:
+                            asset_entry["features"][field] = prior_feats[field]
             assets.append(asset_entry)
 
     doc = {

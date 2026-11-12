@@ -78,6 +78,48 @@ def validate_timeline(ev):
     if end != frames:
         raise ValueError(f'镜头覆盖 {end} 帧，与 frames={frames} 不一致')
 
+    if ev.get("contract_required") and not ev.get("contracts"):
+        raise ValueError("CONTRACTS_REQUIRED: 此渲染计划要求镜头契约")
+
+    # 只有经审批且逐镜签署合规证明的契约计划才允许进入渲染。
+    # 旧版没有 contracts 的人工时间轴保持兼容。
+    if "contracts" in ev:
+        try:
+            from scripts.shot_contract import ShotContract, validate_contracts
+        except ImportError:
+            from shot_contract import ShotContract, validate_contracts
+        contracts = [
+            c if isinstance(c, ShotContract) else ShotContract.from_dict(c)
+            for c in ev["contracts"]
+        ]
+        validate_contracts(contracts, fps=fps, shots=shots)
+        if not ev.get("smart_workflow"):
+            raise ValueError("SMART_WORKFLOW_NOT_APPROVED: 带契约的计划不得绕过审批")
+        audit = ev.get("contract_audit") or {}
+        items = audit.get("shots")
+        if not isinstance(items, list) or len(items) != len(shots):
+            raise ValueError("CONTRACT_AUDIT_MISSING: 缺少逐镜契约审批记录")
+        forced = False
+        for shot, item in zip(shots, items):
+            if not isinstance(item, dict) or item.get("shot_id") != shot["id"]:
+                raise ValueError("CONTRACT_AUDIT_MISMATCH: 镜号不匹配")
+            if item.get("path") != shot.get("material"):
+                raise ValueError(f"CONTRACT_AUDIT_MISMATCH: 镜头 #{shot['id']} 的素材路径变更")
+            if not math.isclose(
+                float(item.get("in_sec", -1)), float(shot.get("material_in", -2)),
+                abs_tol=1e-4,
+            ):
+                raise ValueError(f"CONTRACT_AUDIT_MISMATCH: 镜头 #{shot['id']} 的素材入点变更")
+            if item.get("status") not in ("PASS", "FORCED"):
+                raise ValueError(f"CONTRACT_AUDIT_INCOMPLETE: 镜头 #{shot['id']} 未通过契约审核")
+            if item["status"] == "FORCED":
+                forced = True
+                if not str(item.get("reason") or "").strip():
+                    raise ValueError("CONTRACT_OVERRIDE_REASON_REQUIRED")
+        expected_status = "FORCED" if forced else "PASSED"
+        if audit.get("status") != expected_status:
+            raise ValueError("CONTRACT_AUDIT_STATUS_MISMATCH")
+
 
 def main():
     ap = argparse.ArgumentParser()
