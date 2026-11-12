@@ -253,6 +253,9 @@ def compose(
     out_timeline["shots"] = composed_shots
     out_timeline["alternative_compositions"] = alternative_compositions
     if parsed_contracts:
+        # 即使 contracts 来自 constraints，也必须随方案固化；
+        # 否则后续审批/渲染将无法识别存在过的契约门禁。
+        out_timeline["contracts"] = [c.to_dict() for c in parsed_contracts]
         out_timeline["contract_audit"] = {
             "status": "FORCED" if any(s.get("selection", {}).get("forced_fill") for s in composed_shots) else "PASSED",
             "shots": [
