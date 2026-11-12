@@ -227,6 +227,27 @@ def analyze_material_gaps(
     }
 
 
+_HUMAN_LABELS = {
+    "player_character": "玩家角色", "npc": "NPC 角色",
+    "scenery_empty": "纯风景无人物", "environment": "场景环境",
+    "close_up": "特写", "medium_shot": "中景", "full_shot": "全身",
+    "long_shot": "远景", "static": "固定机位／静止",
+    "pan_right": "镜头缓慢向右转", "pan_left": "镜头缓慢向左转",
+    "push_in": "镜头向前推近", "pull_out": "镜头向后拉远",
+    "sheathing_sword": "收剑入鞘", "pose_drinking": "角色举杯饮酒",
+    "walking_right": "角色向右行走",
+    "snow_mountain": "雪山", "sea_cloud": "云海",
+    "scenic": "自然风景", "bamboo_forest": "竹林",
+    "watermill": "水车附近",
+}
+
+
+def _human(value: Any) -> str:
+    raw = str(value)
+    label = _HUMAN_LABELS.get(raw)
+    return f"{label}（{raw}）" if label else _cell(value)
+
+
 def _cell(value: Any) -> str:
     return str(value).replace("|", "／").replace("\n", " ").strip()
 
@@ -239,7 +260,7 @@ def generate_capture_task_sheet(gap_result: Dict[str, Any], out_path: Path) -> P
     reviews = gap_result.get("review_required", [])
     total = gap_result.get("total_shots", 0)
     lines = [
-        "# 游戏内补录与素材复核任务单",
+        "# 《游戏内补录需求任务单》与素材复核",
         "",
         f"> {total} 镜；确定缺口 {len(gaps)} 镜；信息不足待复核 {len(reviews)} 镜。",
         "> 不要盲目填充。先复核未知项，再补录确认缺失的动作。",
@@ -255,15 +276,15 @@ def generate_capture_task_sheet(gap_result: Dict[str, Any], out_path: Path) -> P
         beat = f"镜头内第 {c.beat_peak_frame - c.start_frame} 帧" if c.beat_peak_frame is not None else "无明确重音锚点"
         lines.append(
             f"| #{c.id:02d} | {c.duration_seconds:.2f} 秒 | {capture_s:g} 秒 | "
-            f"{_cell(c.scene_type)} | {_cell(c.subject)}／{_cell(c.framing)} | "
-            f"{_cell(c.action)} | {_cell(c.camera_motion)} | {beat} |"
+            f"{_human(c.scene_type)} | {_human(c.subject)}／{_human(c.framing)} | "
+            f"{_human(c.action)} | {_human(c.camera_motion)} | {beat} |"
         )
         lines.extend([
             "",
             f"### 镜头 #{c.id:02d}：拍摄步骤",
-            f"1. 进入 {_cell(c.scene_type)} 场景，准备 {_cell(c.subject)}，调整为 {_cell(c.framing)} 景别并隐藏 HUD。",
-            f"2. 开始录屏，先保留约 3 秒稳定画面，再完成 {_cell(c.action)}。",
-            f"3. 按 {_cell(c.camera_motion)} 方向运镜，动作结束后再保留约 3 秒，累计至少录 {capture_s:g} 秒。",
+            f"1. 进入 {_human(c.scene_type)} 场景，准备 {_human(c.subject)}，调整为 {_human(c.framing)} 景别并隐藏 HUD。",
+            f"2. 开始录屏，先保留约 3 秒稳定画面，再完成 {_human(c.action)}。",
+            f"3. 按 {_human(c.camera_motion)} 指令运镜，动作结束后再保留约 3 秒，累计至少录 {capture_s:g} 秒。",
             f"4. 将原始视频存入素材目录；选出包含完整动作的时间窗口，再重新构建素材索引。",
             f"- 缺口依据：{_cell(item.get('reason', '未找到合格候选'))}",
         ])
