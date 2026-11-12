@@ -7,7 +7,7 @@ from fractions import Fraction
 from typing import Any, Dict, List, Optional, Tuple
 from scripts.smart_match import enumerate_windows, score_candidate, score_transition
 from scripts.gap_analyzer import MaterialDeficitError, analyze_material_gaps, generate_capture_task_sheet, evaluate_contract_match
-from scripts.shot_contract import ShotContract, validate_contracts
+from scripts.shot_contract import ShotContract, validate_contracts, evaluate_match_cut_transition
 
 
 def compose(
@@ -165,6 +165,17 @@ def compose(
                 if use_count >= 2 and not allow_forced_fill:
                     continue  # 未授权禁止超限复用
 
+                # Match Cut 属于跨镜头硬约束，不能用高运动能量或场景分数补足。
+                transition = (
+                    evaluate_match_cut_transition(prev, c, parsed_contracts[t])
+                    if parsed_contracts else {"status": "PASS", "reason": "not_required"}
+                )
+                if transition["status"] != "PASS" and not allow_forced_fill:
+                    continue
+                candidate_for_path = dict(c)
+                candidate_for_path["transition_status"] = transition["status"]
+                candidate_for_path["transition_reason"] = transition["reason"]
+
                 # 综合单镜分与转场分
                 trans_score = score_transition(prev, c)
                 step_score = c["score"] * 0.65 + trans_score * 0.35
@@ -182,12 +193,12 @@ def compose(
                     elif prev_scene and cur_scene and prev_scene == cur_scene:
                         step_score *= 0.70  # 同场景连用惩罚
 
-                next_beam_pool.append((round(cum_score + step_score, 4), path + [c]))
+                next_beam_pool.append((round(cum_score + step_score, 4), path + [candidate_for_path]))
 
         if not next_beam_pool:
             raise MaterialDeficitError(
-                f"NO_FEASIBLE_COMPOSITION: 第 {t + 1}/{len(shots)} 镜无法满足素材复用上限；"
-                "需要增加不同素材或调整约束，不能输出不完整方案"
+                f"NO_FEASIBLE_COMPOSITION: 第 {t + 1}/{len(shots)} 镜未找到满足"
+                "复用限制、Match Cut 连续性及素材约束的完整路径"
             )
         # 确定性排序：累积分数从高到低，平局按候选 ID 字典序
         next_beam_pool.sort(
@@ -235,7 +246,12 @@ def compose(
                 "contract_status": chosen.get("contract_status", "NOT_APPLICABLE"),
                 "contract_score": chosen.get("contract_score"),
                 "contract_reason": chosen.get("contract_reason"),
-                "forced_fill": bool(parsed_contracts and chosen.get("contract_status") != "PASS"),
+                "transition_status": chosen.get("transition_status"),
+                "transition_reason": chosen.get("transition_reason"),
+                "forced_fill": bool(parsed_contracts and (
+                    chosen.get("contract_status") != "PASS"
+                    or chosen.get("transition_status") != "PASS"
+                )),
                 "semantic_evidence": chosen.get("semantic_evidence"),
             }
 
@@ -263,8 +279,14 @@ def compose(
                     "shot_id": s["id"],
                     "path": s.get("material"),
                     "in_sec": s.get("material_in"),
-                    "status": s["selection"]["contract_status"],
-                    "reason": s["selection"].get("contract_reason"),
+                    "status": "FORCED" if s["selection"].get("forced_fill") else "PASS",
+                    "semantic_status": s["selection"].get("contract_status"),
+                    "transition_status": s["selection"].get("transition_status"),
+                    "reason": (
+                        s["selection"].get("transition_reason")
+                        if s["selection"].get("transition_status") != "PASS"
+                        else s["selection"].get("contract_reason")
+                    ),
                 }
                 for s in composed_shots
             ],
