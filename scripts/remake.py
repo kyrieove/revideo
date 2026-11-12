@@ -35,11 +35,15 @@ def validate_smart_approval(ev):
         raise ValueError('SMART_WORKFLOW_NOT_APPROVED')
     try:
         from scripts.smart_schema import fingerprint_render_plan
-        expected = fingerprint_render_plan(ev)
-        if sw.get('approval_sha256') != expected:
-            raise ValueError('SMART_WORKFLOW_APPROVAL_STALE')
     except ImportError:
-        pass
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from scripts.smart_schema import fingerprint_render_plan
+    
+    expected = fingerprint_render_plan(ev)
+    if sw.get('approval_sha256') != expected:
+        raise ValueError('SMART_WORKFLOW_APPROVAL_STALE')
 
 
 def validate_timeline(ev):

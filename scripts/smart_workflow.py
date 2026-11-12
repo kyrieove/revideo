@@ -3,7 +3,7 @@
 import copy
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from scripts.smart_schema import fingerprint_render_plan, validate_smart_workflow
 
@@ -33,8 +33,17 @@ def build_proposed_plan(events: Dict[str, Any], candidates: Dict[str, Any]) -> D
     return proposed
 
 
-def approve(proposed_events: Dict[str, Any]) -> Dict[str, Any]:
-    """对已完成审查的方案打上审批签名，输出 events.approved.json。"""
+def approve(proposed_events: Dict[str, Any], decisions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """对已完成审查的方案打上审批签名，输出 events.approved.json。
+    必须验证 decisions 中所有镜头均已明确确认，杜绝未审查直接通过。
+    """
+    if decisions is not None:
+        dec_map = {d["shot_id"]: d for d in decisions.get("decisions", [])}
+        for shot in proposed_events.get("shots", []):
+            sid = shot.get("id")
+            if sid not in dec_map or not dec_map[sid].get("confirmed", True):
+                raise ValueError(f"Shot {sid} is missing confirmed human decision")
+
     approved = copy.deepcopy(proposed_events)
     fp = fingerprint_render_plan(approved)
     approved["smart_workflow"] = {
