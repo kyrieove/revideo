@@ -1,0 +1,178 @@
+"""B244621 regression: semantic admissibility, localized windows and render audit."""
+import math
+import tempfile
+import unittest
+from pathlib import Path
+
+from scripts.gap_analyzer import (
+    MaterialDeficitError,
+    analyze_material_gaps,
+    evaluate_asset_against_contract,
+    evaluate_contract_match,
+    generate_capture_task_sheet,
+)
+from scripts.shot_contract import ShotContract, validate_contracts
+from scripts.smart_match import enumerate_windows
+from scripts.smart_compose import compose
+from scripts.smart_schema import fingerprint_render_plan
+from scripts.remake import validate_timeline
+
+
+def contract():
+    return ShotContract(
+        id=1, start_frame=0, end_frame=30, duration_frames=30,
+        duration_seconds=1.0, beat_peak_frame=0, subject="player_character",
+        action="sheathing_sword", camera_motion="pan_right",
+        scene_type="snow_mountain",
+    )
+
+
+def verified_asset():
+    return {
+        "asset_id": "verified",
+        "path": "/media/verified.mp4",
+        "valid": True,
+        "duration_seconds": 60.0,
+        "features": {
+            "motion_intensity": 0.2,
+            "motion_direction": "left_to_right",
+            "brightness": 0.5,
+        },
+        "semantic_segments": [{
+            "start": 40.0, "end": 43.0,
+            "confidence": 1.0, "source": "manual",
+            "features": {
+                "subject": "player_character",
+                "action": "sheathing_sword",
+                "camera_motion": "pan_right",
+                "dominant_scene": "snow_mountain",
+            }
+        }],
+    }
+
+
+class ContractSafetyRegression(unittest.TestCase):
+    def test_wrong_action_cannot_be_offset_by_other_scores(self):
+        asset = {
+            "valid": True, "duration_seconds": 10.0,
+            "features": {
+                "subject": "player_character", "action": "running",
+                "camera_motion": "pan_right",
+                "dominant_scene": "snow_mountain",
+            },
+        }
+        self.assertLess(evaluate_asset_against_contract(asset, contract()), 0.60)
+        self.assertEqual(evaluate_contract_match(asset, contract())["status"], "GAP")
+
+    def test_missing_semantics_is_review_not_pass_or_definite_gap(self):
+        asset = {"valid": True, "duration_seconds": 10, "features": {"motion_intensity": 0.5}}
+        assessment = evaluate_contract_match(asset, contract())
+        self.assertEqual(assessment["status"], "REVIEW_REQUIRED")
+        report = analyze_material_gaps([contract()], {"assets": [asset]})
+        self.assertEqual(report["status"], "REVIEW_REQUIRED")
+        self.assertEqual(report["review_count"], 1)
+        self.assertEqual(report["gap_count"], 0)
+
+    def test_empty_library_blocks_and_sheet_is_generated(self):
+        report = analyze_material_gaps([contract()], {"assets": []})
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertEqual(report["gap_count"], 1)
+        with tempfile.TemporaryDirectory() as directory:
+            dest = Path(directory) / "reports" / "capture_task_sheet.md"
+            generate_capture_task_sheet(report, dest)
+            self.assertTrue(dest.exists())
+            result = dest.read_text(encoding="utf-8")
+            self.assertIn("建议录制", result)
+            self.assertIn("第 0 帧", result)
+            self.assertIn("sheathing_sword", result)
+
+    def test_invalid_threshold_and_empty_contracts_fail_closed(self):
+        with self.assertRaises(ValueError):
+            analyze_material_gaps([contract()], {"assets": []}, threshold=float("nan"))
+        with self.assertRaises(ValueError):
+            analyze_material_gaps([], {"assets": []})
+        with self.assertRaises(ValueError):
+            validate_contracts([ShotContract(
+                id=1, start_frame=0, end_frame=30, duration_frames=29,
+                duration_seconds=1.0
+            )])
+
+    def test_full_duration_window_search_finds_late_action(self):
+        asset = verified_asset()
+        windows = enumerate_windows(asset, 1.0)
+        evidence_windows = [
+            w for w in windows
+            if 40 <= w["in_sec"] <= 42
+            and w.get("semantic_evidence")
+            and evaluate_contract_match(
+                w, contract(), require_window_evidence=True
+            )["status"] == "PASS"
+        ]
+        self.assertTrue(evidence_windows, "A late semantic event must be discoverable")
+        report = analyze_material_gaps([contract()], {"assets": [asset]})
+        self.assertEqual(report["status"], "PASSED")
+
+    def test_compose_only_selects_compliant_window(self):
+        bad = {
+            "asset_id": "bad", "path": "/media/bad.mp4", "valid": True,
+            "duration_seconds": 60.0,
+            "features": {
+                "motion_intensity": 0.9, "subject": "player_character",
+                "action": "running", "camera_motion": "pan_right",
+                "dominant_scene": "snow_mountain",
+            },
+        }
+        source = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 30,
+            "shots": [{"id": 1, "start": 0, "end": 30, "target_energy": 0.9}],
+            "contracts": [contract().to_dict()],
+        }
+        result = compose(source, {"assets": [bad, verified_asset()]})
+        self.assertEqual(result["shots"][0]["material"], verified_asset()["path"])
+        self.assertGreaterEqual(result["shots"][0]["material_in"], 40)
+        self.assertEqual(result["shots"][0]["selection"]["contract_status"], "PASS")
+        self.assertEqual(result["contract_audit"]["status"], "PASSED")
+
+    def test_explicit_empty_contract_is_not_bypass(self):
+        source = {
+            "fps": 30, "shots": [{"id": 1, "start": 0, "end": 30}],
+            "contracts": [],
+        }
+        with self.assertRaises(MaterialDeficitError):
+            compose(source, {"assets": []})
+
+    def test_infeasible_beam_raises_instead_of_partial_output(self):
+        source = {
+            "fps": 30.0,
+            "shots": [
+                {"id": 1, "start": 0, "end": 30},
+                {"id": 2, "start": 30, "end": 60},
+            ],
+        }
+        asset = {
+            "asset_id": "single", "path": "/media/single.mp4",
+            "valid": True, "duration_seconds": 2.0,
+            "features": {"motion_intensity": 0.5},
+        }
+        with self.assertRaisesRegex(MaterialDeficitError, "NO_FEASIBLE_COMPOSITION"):
+            compose(source, {"assets": [asset]})
+
+    def test_render_requires_per_shot_audit_with_contracts(self):
+        ev = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 30,
+            "shots": [{
+                "id": 1, "start": 0, "end": 30,
+                "material": "/media/verified.mp4", "material_in": 40.0,
+            }],
+            "contracts": [contract().to_dict()],
+        }
+        ev["smart_workflow"] = {
+            "schema_version": 1, "status": "approved",
+            "approval_sha256": fingerprint_render_plan(ev),
+        }
+        with self.assertRaisesRegex(ValueError, "CONTRACT_AUDIT_MISSING"):
+            validate_timeline(ev)
+
+
+if __name__ == "__main__":
+    unittest.main()
