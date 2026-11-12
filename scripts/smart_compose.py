@@ -155,15 +155,15 @@ def compose(
             prev = path[-1] if path else None
             for c in cands:
                 # 0. 相邻镜头绝对防重复硬门禁
-                if prev and (prev.get("path") == c.get("path") or prev.get("asset_id") == c.get("asset_id")):
+                if prev and not allow_forced_fill and (prev.get("path") == c.get("path") or prev.get("asset_id") == c.get("asset_id")):
                     continue
 
                 # 1. 全局素材使用频次硬门禁：单素材全片复用绝对不超过 2 次
                 used_paths = [p.get("path") for p in path if p is not None]
                 cur_path = c.get("path")
                 use_count = sum(1 for p in used_paths if p == cur_path)
-                if use_count >= 2:
-                    continue  # 彻底禁止继续使用该素材
+                if use_count >= 2 and not allow_forced_fill:
+                    continue  # 未授权禁止超限复用
 
                 # 综合单镜分与转场分
                 trans_score = score_transition(prev, c)
@@ -269,7 +269,8 @@ def compose(
     out_timeline["beam_search_meta"] = {
         "beam_width": beam_width,
         "best_cumulative_score": beam[0][0] if beam else 0.0,
-        "num_alternatives": len(alternative_compositions)
+        "num_alternatives": len(alternative_compositions),
+        "forced_fill_authorized": bool(allow_forced_fill)
     }
     
     # 状态保证为 proposed，杜绝组接自动放行为 approved
