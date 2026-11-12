@@ -3,8 +3,10 @@
 每镜 shots[i].material 是素材路径（视频或图片），可选 material_in（素材里的起点秒，默认 0）、
 可选 transition（如 "fade:6" 或 {"type": "fade", "frames": 6}，表示进入本镜的 xfade 转场；"cut" 强制硬切）。
 镜头长度 = end - start 帧，照搬参考片，转场需要的重叠帧自动向后延长/克隆补齐，总帧数与切点绝不漂移。
-音乐默认用 music.song + music.song_offset；没有整首歌就用 --music 给参考片原声，offset 0。"""
-import argparse, json, os, subprocess, tempfile
+音乐优先 --music（默认 offset 0），其次 music.song + song_offset，最后 events.ref 原声（默认 offset 0）；--offset 覆盖起点。"""
+import argparse, json, math, os, subprocess, tempfile
+from fractions import Fraction
+from pathlib import Path
 
 
 def parse_trans(spec):
@@ -18,6 +20,36 @@ def parse_trans(spec):
     return str(spec), 6
 
 
+def probe(path, count=False):
+    return json.loads(subprocess.check_output([
+        'ffprobe', '-v', 'error', *(['-count_frames'] if count else []),
+        '-show_streams', '-show_format', '-of', 'json', str(path)]))
+
+
+def validate_timeline(ev):
+    frames, fps = ev['frames'], ev['fps']
+    if type(frames) is not int or frames <= 0 or not math.isfinite(fps) or fps <= 0:
+        raise ValueError('frames 必须为正整数，fps 必须有限且为正')
+    rate = Fraction(ev['fps_str'])
+    if rate <= 0 or not math.isclose(float(rate), fps, rel_tol=1e-9):
+        raise ValueError('fps 与 fps_str 不一致')
+    shots = ev['shots']
+    if not shots:
+        raise ValueError('shots 不能为空')
+    ids, end = set(), 0
+    for s in shots:
+        if type(s['id']) is not int or s['id'] in ids:
+            raise ValueError('镜头 ID 必须为唯一整数')
+        ids.add(s['id'])
+        if type(s['start']) is not int or type(s['end']) is not int or s['start'] != end or s['end'] <= end:
+            raise ValueError('镜头须从 0 起连续覆盖，区间必须为正整数帧')
+        end = s['end']
+        if not math.isfinite(s.get('material_in', 0)) or s.get('material_in', 0) < 0:
+            raise ValueError('material_in 必须有限且非负')
+    if end != frames:
+        raise ValueError(f'镜头覆盖 {end} 帧，与 frames={frames} 不一致')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('events'); ap.add_argument('out')
@@ -25,6 +57,29 @@ def main():
     ap.add_argument('--transition', help='全局默认转场，如 fade:6 或 wipeleft:4（shots[i].transition 可单独覆盖）')
     o = ap.parse_args()
     ev = json.load(open(o.events, encoding='utf-8'))
+    validate_timeline(ev)
+    base = Path(o.events).resolve().parent
+    def resolve(path):
+        p = Path(path)
+        return str(p if p.is_absolute() else base / p)
+    for shot in ev['shots']:
+        if shot.get('material'):
+            shot['material'] = resolve(shot['material'])
+    m = ev.get('music') or {}
+    music = o.music or m.get('song') or ev.get('ref')
+    if not music:
+        raise ValueError('没有音源：需要 --music、music.song 或带音轨的 events.ref')
+    music = str(Path(o.music).resolve()) if o.music else resolve(music)
+    off = o.offset if o.offset is not None else (m.get('song_offset') or 0) if not o.music and m.get('song') else 0
+    if not math.isfinite(off) or off < 0:
+        raise ValueError('音轨起点必须有限且非负')
+    dur = ev['frames'] / ev['fps']
+    audio = [s for s in probe(music)['streams'] if s['codec_type'] == 'audio']
+    if not audio:
+        raise ValueError(f'音源没有音轨：{music}')
+    available = float(audio[0].get('duration', 'nan'))
+    if not math.isfinite(available) or available + 0.001 < off + dur:
+        raise ValueError(f'音源不足或无法确认时长：需要 {off + dur:.4f} 秒，实际 {available}')
     W, H = ev['size']
     fr, fps = ev['fps_str'], float(ev['fps'])
     shots = ev['shots']
@@ -84,10 +139,10 @@ def main():
             if k == 0:
                 continue
             t_type, d = in_trans[idx]
-            off = (shots[idx]['start'] - start_0) / fps
-            dur = d / fps
+            trans_off = (shots[idx]['start'] - start_0) / fps
+            trans_dur = d / fps
             nxt = f'[v{k}]'
-            fc.append(f'{cur}[{k}:v]xfade=transition={t_type}:duration={dur:.6f}:offset={off:.6f}{nxt}')
+            fc.append(f'{cur}[{k}:v]xfade=transition={t_type}:duration={trans_dur:.6f}:offset={trans_off:.6f}{nxt}')
             cur = nxt
         subprocess.run(['ffmpeg', '-v', 'error', '-y', *inps, '-filter_complex', ';'.join(fc),
                         '-map', cur, '-an', '-c:v', 'ffv1', '-pix_fmt', 'yuv420p', cp], check=True)
@@ -96,15 +151,20 @@ def main():
     lst = os.path.join(tmp, 'list.txt')
     open(lst, 'w', encoding='utf-8').write(''.join(f"file '{p}'\n" for p in parts))
 
-    m = ev['music']
-    music = o.music or m.get('song')
-    off = o.offset if o.offset is not None else (m.get('song_offset') or 0) if not o.music else 0
-    dur = ev['frames'] / ev['fps']
-    aud = ['-ss', f'{off:.4f}', '-t', f'{dur:.4f}', '-i', music] if music else []
+    aud = ['-ss', f'{off:.8f}', '-t', f'{dur:.8f}', '-i', music]
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', lst, *aud,
-                    '-map', '0:v', *(['-map', '1:a', '-c:a', 'aac', '-b:a', '256k'] if music else []),
+                    '-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '256k',
                     '-c:v', 'libx264', '-crf', '14', '-pix_fmt', 'yuv420p', '-r', fr, o.out], check=True)
-    print(o.out, len(shots), '镜', ev['frames'], '帧')
+    measured = probe(o.out, count=True)
+    video = next(s for s in measured['streams'] if s['codec_type'] == 'video')
+    audio_out = next((s for s in measured['streams'] if s['codec_type'] == 'audio'), None)
+    got = int(video['nb_read_frames'])
+    if (got != ev['frames'] or Fraction(video['avg_frame_rate']) != Fraction(fr)
+            or abs(float(video['duration']) - dur) > 1 / fps
+            or audio_out is None or abs(float(audio_out.get('duration', 'nan')) - dur) > 1 / fps
+            or not math.isfinite(float(audio_out.get('duration', 'nan')))):
+        raise ValueError(f'渲染后验收失败：声明 {ev["frames"]} 帧，实际 {got} 帧；音视频时长须在 1 帧内一致')
+    print(o.out, len(shots), '镜', got, '帧，音视频时长核对通过')
 
 
 if __name__ == '__main__':

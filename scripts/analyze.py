@@ -10,6 +10,8 @@ import librosa
 import numpy as np
 from scipy.signal import find_peaks
 
+from reference_review import attach, has_review
+
 SW = 192          # 测量用的缩小宽度
 DIFF_T = 18       # 像素亮度变化超过这个值算「变了」（0–255）
 
@@ -169,7 +171,20 @@ def main():
                   for j, (a, b) in enumerate(zip(bounds, bounds[1:]))],
         'events': events, 'continuous': cont, 'tracks': {},
     }
-    json.dump(doc, open(os.path.join(o.out, 'events.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    try:
+        attach(doc, o.out, o.rea)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        ap.exit(1, f'FAIL_REFERENCE_REVIEW {exc}\n')
+    events_path = os.path.join(o.out, 'events.json')
+    if os.path.exists(events_path):
+        try:
+            with open(events_path, encoding='utf-8') as f:
+                old = json.load(f)
+        except (OSError, ValueError):
+            old = {}
+        if has_review(old):
+            ap.exit(1, 'FAIL_REFERENCE_REVIEW 已有参考复核记录，拒绝覆盖；先备份移走 events.json 再重新分析\n')
+    json.dump(doc, open(events_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     np.savetxt(os.path.join(o.out, 'change.txt'), np.c_[np.arange(n), area, score], fmt=['%d', '%.4f', '%.2f'],
                header='frame area score')
     only_rea = sorted(set(cuts) - set(sd)) if o.rea else []

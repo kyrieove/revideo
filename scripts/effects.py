@@ -12,7 +12,10 @@ analyze.py 只找切点和鼓点；连续转场、每圈结尾的模糊动效、
   effects.py energy events.json ref.mp4 out.mp4 out.svg [参考起始帧]   逐镜亮度、运动量、景别、drum_env 的参考/成片对比图
   effects.py selftest
 """
+import json
+import subprocess
 import sys
+import tempfile
 import numpy as np
 
 W = 480
@@ -55,30 +58,51 @@ def runs(idx):
 
 
 def read_gray(path, start=0, n=None):
-    import cv2
-    c = cv2.VideoCapture(path)
-    c.set(cv2.CAP_PROP_POS_FRAMES, start)
-    k = 0
-    while n is None or k < n:
-        ok, im = c.read()
-        if not ok:
-            return
-        yield cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        k += 1
+    if start < 0 or (n is not None and n <= 0):
+        raise ValueError('起始帧必须非负，帧数必须为正')
+    info = json.loads(subprocess.check_output([
+        'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height', '-of', 'json', str(path)]))
+    w, h = info['streams'][0]['width'], info['streams'][0]['height']
+    vf = f'trim=start_frame={start}' + (f':end_frame={start + n}' if n is not None else '')
+    cmd = ['ffmpeg', '-v', 'error', '-i', str(path), '-map', '0:v:0',
+           '-vf', vf, '-fps_mode', 'passthrough', '-pix_fmt', 'gray', '-f', 'rawvideo', '-']
+    # 临时错误流避免管道被日志填满；提前关闭迭代器也会回收解码进程。
+    with tempfile.TemporaryFile() as errors:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=errors)
+        assert p.stdout is not None
+        try:
+            while True:
+                raw = p.stdout.read(w * h)
+                if not raw:
+                    break
+                if len(raw) != w * h:
+                    raise RuntimeError(f'{path}: 解码得到不完整帧')
+                yield np.frombuffer(raw, np.uint8).reshape(h, w)
+            if p.wait():
+                errors.seek(0)
+                raise RuntimeError(errors.read().decode('utf-8', errors='replace'))
+        finally:
+            p.stdout.close()
+            if p.poll() is None:
+                p.terminate()
+            p.wait()
 
 
 def detail(path, start, k, m=12):
     """均匀取 m 帧，统一到 1080 高后 Laplacian 方差的中位数。profile 缩到 480 宽，量不出放大和多次转码造成的发虚。"""
     import cv2
-    c, v = cv2.VideoCapture(path), []
-    for f in np.linspace(start, start + k - 1, m).astype(int):
-        c.set(cv2.CAP_PROP_POS_FRAMES, int(f))
-        ok, im = c.read()
-        if ok:
-            g = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    v = []
+    wanted = set(np.linspace(0, k - 1, m).astype(int))
+    count = 0
+    for i, g in enumerate(read_gray(path, start, k)):
+        count += 1
+        if i in wanted:
             g = cv2.resize(g, (round(g.shape[1] * 1080 / g.shape[0]), 1080), interpolation=cv2.INTER_AREA)
             v.append(cv2.Laplacian(g.astype(np.float32), cv2.CV_32F).var())
-    return float(np.median(v)) if v else 0.0
+    if count != k:
+        raise ValueError(f'{path}: 清晰度抽样要求 {k} 帧，实际 {count} 帧')
+    return float(np.median(v))
 
 
 def cmd_energy(events, ref, out, svg, ref_start=0):
@@ -151,10 +175,13 @@ def cmd_dips(video, start=0, n=None):
 
 
 def cmd_compare(ref, out, ref_start=0, n=None):
-    n = int(n) if n else None
+    n = int(n) if n is not None else None
     rs, rm, re_ = profile(read_gray(ref, int(ref_start), n))
-    os_, om, oe = profile(read_gray(out, 0, len(rs)))
-    k = min(len(rs), len(os_))
+    os_, om, oe = profile(read_gray(out, 0, n))
+    if not len(rs) or len(rs) != len(os_) or (n is not None and len(rs) != n):
+        print(f'FAIL 区间不完整：要求 {n if n is not None else "参考剩余全片"} 帧，参考 {len(rs)}，复刻 {len(os_)}')
+        return False
+    k = len(rs)
     if k < 20:
         raise SystemExit(f"读到的帧太少（参考 {len(rs)}，复刻 {len(os_)}）：文件不完整，或正在被别的进程写入？")
     ok = True
