@@ -3,6 +3,8 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+import json
 
 from scripts.gap_analyzer import (
     MaterialDeficitError,
@@ -15,6 +17,8 @@ from scripts.shot_contract import ShotContract, validate_contracts
 from scripts.smart_match import enumerate_windows
 from scripts.smart_compose import compose
 from scripts.smart_schema import fingerprint_render_plan
+from scripts.smart_workflow import build_proposed_plan, approve
+from scripts.material_index import build_index
 from scripts.remake import validate_timeline
 
 
@@ -172,6 +176,79 @@ class ContractSafetyRegression(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "CONTRACT_AUDIT_MISSING"):
             validate_timeline(ev)
+
+
+    def test_approved_composition_rechecks_contract_and_renders(self):
+        asset = verified_asset()
+        c = contract()
+        source = {
+            "fps": 30.0, "fps_str": "30/1", "frames": 30,
+            "shots": [{"id": 1, "start": 0, "end": 30}],
+            "contracts": [c.to_dict()],
+        }
+        index = {"assets": [asset]}
+        result = compose(source, index)
+        selected = result["shots"][0]
+        meta = {
+            "candidate_id": selected["selection"]["candidate_id"],
+            "path": selected["material"],
+            "in_sec": selected["material_in"],
+        }
+        candidates = {
+            "schema_version": 1,
+            "slots": [{"shot_id": 1, "candidates": [meta]}],
+        }
+        decisions = {
+            "schema_version": 1,
+            "source_events_sha256": fingerprint_render_plan(source),
+            "candidates_sha256": fingerprint_render_plan(candidates),
+            "decisions": [{
+                "shot_id": 1, "confirmed": True,
+                "selected_candidate_id": meta["candidate_id"],
+            }],
+        }
+        proposed = build_proposed_plan(source, candidates)
+        approved = approve(proposed, decisions, candidates, source, index=index)
+        self.assertEqual(approved["contract_audit"]["status"], "PASSED")
+        validate_timeline(approved)
+        approved["shots"][0]["material_in"] += 0.5
+        approved["smart_workflow"]["approval_sha256"] = fingerprint_render_plan(approved)
+        with self.assertRaisesRegex(ValueError, "CONTRACT_AUDIT_MISMATCH"):
+            validate_timeline(approved)
+
+    def test_reindex_preserves_semantics_only_when_fingerprint_unchanged(self):
+        fake_path = "/media/gameplay.mp4"
+        info = {
+            "valid": True, "duration_seconds": 60.0,
+            "fps_str": "30/1", "codec": "h264",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "index.json"
+            previous = {
+                "schema_version": 1,
+                "assets": [{
+                    "path": fake_path, "source_fingerprint": "version-a",
+                    "valid": True, "semantic_verified": True,
+                    "semantic_scope": "full_asset",
+                    "semantic_segments": [{"start": 40, "end": 43, "features": {"action": "sheathing_sword"}}],
+                    "features": {"subject": "player_character", "action": "sheathing_sword"},
+                }],
+            }
+            output.write_text(json.dumps(previous), encoding="utf-8")
+            with patch("scripts.material_index.discover_assets", return_value=[fake_path]), \
+                 patch("scripts.material_index.probe_asset", return_value=info), \
+                 patch("scripts.material_index.sample_asset", return_value=[]), \
+                 patch("scripts.material_index.compute_source_fingerprint", return_value="version-a"):
+                same = build_index(["/media"], str(output))
+            self.assertTrue(same["assets"][0]["semantic_verified"])
+            self.assertEqual(same["assets"][0]["features"]["action"], "sheathing_sword")
+            with patch("scripts.material_index.discover_assets", return_value=[fake_path]), \
+                 patch("scripts.material_index.probe_asset", return_value=info), \
+                 patch("scripts.material_index.sample_asset", return_value=[]), \
+                 patch("scripts.material_index.compute_source_fingerprint", return_value="version-b"):
+                changed = build_index(["/media"], str(output))
+            self.assertFalse(changed["assets"][0]["semantic_verified"])
+            self.assertNotIn("action", changed["assets"][0]["features"])
 
 
 if __name__ == "__main__":
