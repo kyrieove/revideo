@@ -8,7 +8,9 @@ import tempfile
 
 import numpy as np
 
-ROOT = Path('C:/Users/ASUS/.claude/skills/revideo/scripts')
+ROOT = Path(__file__).resolve().parent.parent / 'scripts'
+REPO = Path(__file__).resolve().parent.parent
+PROJECT = Path(__file__).resolve().parent.parent
 PYTHON = sys.executable
 RESULTS = []
 

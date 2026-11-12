@@ -10,8 +10,12 @@ import sys
 import tempfile
 import unittest
 
-ROOT = Path('D:/2/dev/claude-video/tools/revideo')
-PROJECT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent.parent / 'scripts'
+REPO = Path(__file__).resolve().parent.parent
+PROJECT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent / 'scripts'
+REPO = Path(__file__).resolve().parent.parent
+PROJECT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location('reference_review', ROOT / 'reference_review.py')
 assert spec is not None and spec.loader is not None
 rr = importlib.util.module_from_spec(spec)

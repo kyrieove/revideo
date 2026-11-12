@@ -10,7 +10,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path('D:/2/dev/claude-video/tools/revideo')
+ROOT = Path(__file__).resolve().parent.parent / 'scripts'
+REPO = Path(__file__).resolve().parent.parent
+PROJECT = Path(__file__).resolve().parent.parent
 
 
 def load(name):
