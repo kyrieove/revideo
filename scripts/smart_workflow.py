@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from scripts.shot_contract import ShotContract, validate_contracts
+from scripts.shot_contract import ShotContract, validate_contracts, evaluate_match_cut_transition
 from scripts.gap_analyzer import MaterialDeficitError, evaluate_contract_match
 from scripts.smart_match import enumerate_windows
 
@@ -114,6 +114,7 @@ def approve(
             if isinstance(asset, dict) and asset.get("valid") is True
         }
     contract_audit = []
+    previous_selected_window = None
     for shot in approved.get("shots", []):
         sid = shot.get("id")
         dec = dec_map[sid]
@@ -138,20 +139,29 @@ def approve(
             assessment = evaluate_contract_match(
                 selected, c, require_window_evidence=True
             )
+            transition = evaluate_match_cut_transition(previous_selected_window, selected, c)
             override = dec_map[sid].get("force_contract_override") is True
             reason = str(dec_map[sid].get("override_reason") or "").strip()
-            if assessment["status"] != "PASS" and not (override and reason):
+            requires_override = (
+                assessment["status"] != "PASS"
+                or transition["status"] != "PASS"
+            )
+            if requires_override and not (override and reason):
                 raise MaterialDeficitError(
-                    f"CONTRACT_NOT_VERIFIED: 镜头 #{sid} 状态 {assessment['status']}；"
-                    "若要人工强剪，需在该镜头 decisions 中写 force_contract_override=true 和 override_reason"
+                    f"CONTRACT_NOT_VERIFIED: 镜头 #{sid} 语义状态 {assessment['status']}、"
+                    f"Match Cut 状态 {transition['status']}；"
+                    "人工强剪需要该镜头的 force_contract_override=true 和 override_reason"
                 )
             contract_audit.append({
                 "shot_id": sid,
                 "path": selected.get("path"),
                 "in_sec": selected.get("in_sec"),
-                "status": "FORCED" if override and assessment["status"] != "PASS" else "PASS",
-                "reason": reason if override else assessment["reason"],
+                "status": "FORCED" if requires_override else "PASS",
+                "semantic_status": assessment["status"],
+                "transition_status": transition["status"],
+                "reason": reason if requires_override else assessment["reason"],
             })
+            previous_selected_window = selected
         # 确保镜头素材路径与入点已应用所选决策
         shot["material"] = cand_meta.get("path")
         shot["material_in"] = cand_meta.get("in_sec")
