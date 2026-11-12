@@ -170,9 +170,28 @@ def analyze_material_gaps(
         best = None
         best_asset = None
         for a in assets:
-            ev = evaluate_contract_match(a, c, threshold=threshold)
-            if best is None or (rank[ev["status"]], ev["score"]) > (rank[best["status"]], best["score"]):
-                best, best_asset = ev, a
+            # 素材级标签只做粗筛；已标注的局部动作片段也应参与缺口检测。
+            # 否则一个 60 秒录屏后段的正确动作会被误判为缺失。
+            variants = [a]
+            segments = a.get("semantic_segments") or []
+            if isinstance(segments, list):
+                for seg in segments:
+                    if not isinstance(seg, dict):
+                        continue
+                    try:
+                        seg_duration = float(seg["end"]) - float(seg["start"])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    if seg_duration < c.duration_seconds or not isinstance(seg.get("features"), dict):
+                        continue
+                    variants.append({
+                        **a, "duration_seconds": seg_duration,
+                        "features": {**(a.get("features") or {}), **seg["features"]},
+                    })
+            for candidate in variants:
+                ev = evaluate_contract_match(candidate, c, threshold=threshold)
+                if best is None or (rank[ev["status"]], ev["score"]) > (rank[best["status"]], best["score"]):
+                    best, best_asset = ev, a
         if best is None:
             best = {
                 "status": "GAP", "score": 0.0, "missing": [],
