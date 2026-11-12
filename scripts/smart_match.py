@@ -26,9 +26,9 @@ def clear_window_feature_cache() -> None:
 
 def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: float = 0.5) -> List[Dict[str, Any]]:
     """在素材中滑动切出满足目标时长的候选窗口，提取窗口时间区间的局部真实特征（带防碰撞缓存）。"""
-    dur = asset.get("duration_seconds", 0.0)
+    dur = float(asset.get("duration_seconds", 0.0))
     windows = []
-    if dur < required_duration or not asset.get("valid", False):
+    if required_duration <= 0 or dur < required_duration or not asset.get("valid", False):
         return []
     
     global_feats = asset.get("features", {})
@@ -54,10 +54,27 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
     else:
         sample_version = "no_frames"
 
-    cur_in = 0.0
-    while cur_in + required_duration <= dur + 1e-4:
+    # 覆盖整段录屏，而不是永远只取前 10 秒；候选数量有上界。
+    max_start = max(0.0, dur - required_duration)
+    count = max(1, min(120, int(max_start / step) + 1))
+    offsets = [max_start * i / (count - 1) for i in range(count)] if count > 1 else [0.0]
+    # 优先包含手工或模型标注的关键动作事件，不能由均匀采样遗漏远端动作。
+    segments = asset.get("semantic_segments") or []
+    if isinstance(segments, list):
+        for seg in segments:
+            if isinstance(seg, dict):
+                try:
+                    start = float(seg["start"])
+                    end = float(seg["end"])
+                except (ValueError, TypeError, KeyError):
+                    continue
+                if end - start >= required_duration:
+                    offsets.append(min(max_start, max(0.0, start)))
+                    offsets.append(min(max_start, max(0.0, end - required_duration)))
+    offsets = sorted({round(x, 4) for x in offsets})
+    for cur_in in offsets:
         cur_out = cur_in + required_duration
-        cand_id = f"{raw_id or 'cand'}@{cur_in:.1f}"
+        cand_id = f"{raw_id or raw_path or 'cand'}@{cur_in:.4f}"
         cache_key = (asset_identity, sample_version, FEATURE_ALGO_VERSION, round(cur_in, 4), round(cur_out, 4))
 
         # 优先读取缓存
@@ -81,21 +98,41 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
             local_feats["motion_direction"] = m_dir
             local_feats["dominant_direction"] = m_dir
 
+        # 全片语义标签不能直接证明每个时间窗口都有相同动作。
+        # 仅覆盖窗口的语义片段才有资格作为动作门禁的证据。
+        semantic_evidence = None
+        local_feats = dict(global_feats) | dict(local_feats)
+        for seg in segments if isinstance(segments, list) else []:
+            if not isinstance(seg, dict):
+                continue
+            try:
+                s0, s1 = float(seg["start"]), float(seg["end"])
+            except (ValueError, TypeError, KeyError):
+                continue
+            if s0 <= cur_in + 1e-4 and s1 + 1e-4 >= cur_out:
+                local_feats.update(seg.get("features") or {})
+                semantic_evidence = {
+                    "start": s0, "end": s1,
+                    "source": seg.get("source", "annotated"),
+                    "confidence": seg.get("confidence"),
+                }
+                break
+        if not semantic_evidence and asset.get("semantic_scope") == "full_asset" and asset.get("semantic_verified") is True:
+            semantic_evidence = {"source": "verified_full_asset"}
         windows.append({
             "candidate_id": cand_id,
+            "duration_seconds": required_duration,
+            "semantic_evidence": semantic_evidence,
             "asset_id": asset.get("asset_id"),
             "path": asset.get("path"),
             "source_fingerprint": asset.get("source_fingerprint", ""),
-            "in_sec": round(cur_in, 2),
-            "out_sec": round(cur_out, 2),
+            "in_sec": round(cur_in, 4),
+            "out_sec": round(cur_out, 4),
             "features": local_feats,
             "score": 0.5,
             "reason_codes": ["duration_match"],
             "needs_review": local_feats.get("needs_review", False)
         })
-        cur_in += step
-        if len(windows) >= 20:  # 充足窗口池
-            break
             
     return windows
 
