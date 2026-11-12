@@ -98,6 +98,20 @@ class TestSmartIndex(unittest.TestCase):
         loaded = load_index(index_file)
         self.assertEqual(len(loaded["assets"]), len(doc["assets"]))
 
+    def test_build_and_load_index_persists_sampled_frames(self):
+        # 验证 F-009：采样帧结构必须完整持久化至 index.json
+        index_file = os.path.join(self.tmp_dir, "index_with_frames.json")
+        doc = build_index([self.tmp_dir], index_file)
+        loaded = load_index(index_file)
+        for asset in loaded["assets"]:
+            if asset.get("valid"):
+                self.assertIn("sampled_frames", asset)
+                self.assertGreater(len(asset["sampled_frames"]), 0)
+                first_f = asset["sampled_frames"][0]
+                self.assertIn("timestamp", first_f)
+                self.assertIn("luminance", first_f)
+                self.assertIn("motion", first_f)
+
 
 if __name__ == "__main__":
     unittest.main()
