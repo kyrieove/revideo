@@ -221,34 +221,80 @@ def score_transition(prev_cand: Optional[Dict[str, Any]], cur_cand: Dict[str, An
     return 0.80
 
 
-def propose(events: Dict[str, Any], index: Dict[str, Any], top_k: int = 3) -> Dict[str, Any]:
-    """为全片生成经过真实打分排序的每镜最优候选表，杜绝固定假分与按素材顺序截断。"""
+def propose(
+    events: Dict[str, Any],
+    index: Dict[str, Any],
+    top_k: int = 3,
+    contract_threshold: float = 0.60,
+) -> Dict[str, Any]:
+    """契约优先的逐镜候选列表。没有契约的旧工作流保持兼容。"""
+    from scripts.shot_contract import ShotContract, validate_contracts
+    from scripts.gap_analyzer import (
+        MaterialDeficitError, analyze_material_gaps, evaluate_contract_match
+    )
+
+    shots = events.get("shots", [])
+    fps = float(Fraction(str(events.get("fps_str") or events.get("fps") or 30.0)))
+    if fps <= 0:
+        raise ValueError("fps must be positive")
+    if not isinstance(top_k, int) or top_k < 1:
+        raise ValueError("top_k must be a positive integer")
+
+    raw_contracts = events.get("contracts")
+    if ("contracts" in events and not raw_contracts) or (
+        events.get("contract_required") and not raw_contracts
+    ):
+        raise MaterialDeficitError("CONTRACTS_REQUIRED: 叙事候选生成缺少契约")
+    contracts = []
+    if raw_contracts:
+        contracts = [
+            item if isinstance(item, ShotContract) else ShotContract.from_dict(item)
+            for item in raw_contracts
+        ]
+        validate_contracts(contracts, fps=fps, shots=shots)
+        gap_report = analyze_material_gaps(contracts, index, threshold=contract_threshold)
+        if gap_report["status"] != "PASSED":
+            raise MaterialDeficitError(
+                "CONTRACT_PREFLIGHT_FAILED: 素材库未满足契约或关键语义未核验",
+                report=gap_report,
+            )
+
     slots_output = []
     assets = index.get("assets", [])
-    
-    shots = events.get("shots", [])
-    fps_str = events.get("fps_str") or f"{events.get('fps', 30.0)}/1"
-    fps = float(Fraction(fps_str))
-    
-    for shot in shots:
-        sid = shot.get("id")
+    for i, shot in enumerate(shots):
         dur_sec = (shot.get("end", 30) - shot.get("start", 0)) / fps
+        contract = contracts[i] if contracts else None
         candidates = []
         for asset in assets:
-            windows = enumerate_windows(asset, dur_sec)
-            for w in windows:
-                score = score_candidate(shot, w)
-                w["score"] = score
-                candidates.append(w)
-
-        # 全池按评分降序排序，取最高 top_k
-        candidates.sort(key=lambda c: c["score"], reverse=True)
+            for window in enumerate_windows(asset, dur_sec):
+                if contract:
+                    ev = evaluate_contract_match(
+                        window, contract,
+                        threshold=contract_threshold,
+                        require_window_evidence=True,
+                    )
+                    if ev["status"] != "PASS":
+                        continue
+                    window["contract_status"] = ev["status"]
+                    window["contract_score"] = ev["score"]
+                base = score_candidate(shot, window)
+                window["score"] = (
+                    round(base * 0.45 + window["contract_score"] * 0.55, 3)
+                    if contract else base
+                )
+                candidates.append(window)
+        candidates.sort(
+            key=lambda w: (-w["score"], str(w.get("candidate_id") or ""))
+        )
+        if contract and not candidates:
+            raise MaterialDeficitError(
+                f"NO_COMPLIANT_WINDOWS: 镜头 #{contract.id} 未找到语义合格的时间窗口"
+            )
         slots_output.append({
-            "shot_id": sid,
-            "candidates": candidates[:top_k]
+            "shot_id": shot.get("id"),
+            "candidates": candidates[:top_k],
         })
-        
     return {
         "schema_version": 1,
-        "slots": slots_output
+        "slots": slots_output,
     }
