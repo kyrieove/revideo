@@ -68,6 +68,8 @@ class TestSmartInspect(unittest.TestCase):
         self.assertIn("canvas id=\"flowCanvas\"", content)
         self.assertIn("class=\"center-playhead\"", content)
         self.assertIn("pixelsPerSecond", content)
+        self.assertIn("object-fit: contain", content)
+        self.assertIn("min-height: 0", content)
         self.assertIn("KeyJ", content)
         self.assertIn("KeyK", content)
         self.assertIn("KeyL", content)
