@@ -13,8 +13,16 @@ DEFAULT_WEIGHTS = {
 }
 
 
+# 全局窗口特征缓存：键为 (source_fingerprint, in_sec, out_sec) -> Dict[str, Any]
+_WINDOW_FEATURE_CACHE: Dict[Tuple[str, float, float], Dict[str, Any]] = {}
+
+def clear_window_feature_cache() -> None:
+    """清空窗口特征缓存，供单元测试隔离使用。"""
+    global _WINDOW_FEATURE_CACHE
+    _WINDOW_FEATURE_CACHE.clear()
+
 def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: float = 0.5) -> List[Dict[str, Any]]:
-    """在素材中滑动切出满足目标时长的候选窗口，提取窗口时间区间的局部真实特征。"""
+    """在素材中滑动切出满足目标时长的候选窗口，提取窗口时间区间的局部真实特征（带缓存）。"""
     dur = asset.get("duration_seconds", 0.0)
     windows = []
     if dur < required_duration or not asset.get("valid", False):
@@ -22,22 +30,35 @@ def enumerate_windows(asset: Dict[str, Any], required_duration: float, step: flo
     
     global_feats = asset.get("features", {})
     all_frames = asset.get("sampled_frames", [])
+    fp = asset.get("source_fingerprint", asset.get("asset_id", ""))
     cur_in = 0.0
     while cur_in + required_duration <= dur + 1e-4:
         cur_out = cur_in + required_duration
         cand_id = f"{asset.get('asset_id')}@{cur_in:.1f}"
+        cache_key = (fp, round(cur_in, 2), round(cur_out, 2))
 
-        # 提取窗口内的局部帧样本，计算差异化的局部特征
-        if all_frames:
+        # 优先读取缓存
+        if cache_key in _WINDOW_FEATURE_CACHE:
+            local_feats = dict(_WINDOW_FEATURE_CACHE[cache_key])
+        elif all_frames:
             win_frames = [f for f in all_frames if cur_in <= f.get("timestamp", 0.0) <= cur_out]
             if win_frames:
                 from scripts.material_index import extract_features
-                local_feats = extract_features(win_frames)
+                raw_feats = extract_features(win_frames)
+                # 规范化方向字段：确保 motion_direction 与 dominant_direction 双向同步
+                m_dir = raw_feats.get("motion_direction") or raw_feats.get("dominant_direction") or "static"
+                raw_feats["motion_direction"] = m_dir
+                raw_feats["dominant_direction"] = m_dir
+                local_feats = raw_feats
             else:
-                local_feats = global_feats
+                local_feats = dict(global_feats)
+            _WINDOW_FEATURE_CACHE[cache_key] = dict(local_feats)
         else:
-            # 回退：当无分帧存储时，根据全局特征加入轻量局部窗口微扰以区分
+            # 回退：当无分帧存储时使用全局特征
             local_feats = dict(global_feats)
+            m_dir = local_feats.get("motion_direction") or local_feats.get("dominant_direction") or "static"
+            local_feats["motion_direction"] = m_dir
+            local_feats["dominant_direction"] = m_dir
 
         windows.append({
             "candidate_id": cand_id,
@@ -62,7 +83,7 @@ def score_candidate(target: Dict[str, Any], candidate: Dict[str, Any], weights: 
     """根据目标镜头的能量、动向与景别预期，对候选素材进行动态、可解释打分。"""
     cand_feats = candidate.get("features", {})
     cand_motion = float(cand_feats.get("motion_intensity", 0.3))
-    cand_dir = cand_feats.get("motion_direction", "static")
+    cand_dir = cand_feats.get("motion_direction") or cand_feats.get("dominant_direction") or "static"
     cand_bright = float(cand_feats.get("brightness", 0.5))
 
     target_energy = float(target.get("target_energy", 0.5))

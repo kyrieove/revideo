@@ -142,6 +142,7 @@ def extract_features(frames: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not frames:
         return {
             "motion_intensity": 0.0,
+            "motion_direction": "unknown",
             "dominant_direction": "unknown",
             "brightness": 0.0,
             "energy_curve": [],
@@ -166,6 +167,7 @@ def extract_features(frames: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     return {
         "motion_intensity": round(avg_motion, 3),
+        "motion_direction": dom_dir,
         "dominant_direction": dom_dir,
         "brightness": round(avg_lum, 3),
         "energy_curve": energy_curve[:16],

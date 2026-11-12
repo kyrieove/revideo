@@ -67,5 +67,45 @@ class TestSmartMatch(unittest.TestCase):
         self.assertGreaterEqual(cands[0]["score"], cands[1]["score"])
 
 
+
+    def test_window_feature_cache_and_direction_schema(self):
+        """验证 F-009 窗口特征缓存与 F-010 运动方向契约一致性。"""
+        from scripts.smart_match import enumerate_windows, score_candidate, clear_window_feature_cache, _WINDOW_FEATURE_CACHE
+        clear_window_feature_cache()
+
+        asset = {
+            "asset_id": "test_motion_asset",
+            "path": "dummy.mp4",
+            "source_fingerprint": "fp_test_123",
+            "duration_seconds": 3.0,
+            "valid": True,
+            "features": {"motion_intensity": 0.5, "motion_direction": "static"},
+            "sampled_frames": [
+                {"timestamp": 0.2, "luminance": 0.6, "motion": 0.8, "direction": "right"},
+                {"timestamp": 0.5, "luminance": 0.6, "motion": 0.8, "direction": "right"},
+                {"timestamp": 0.8, "luminance": 0.6, "motion": 0.8, "direction": "right"},
+                {"timestamp": 1.2, "luminance": 0.4, "motion": 0.2, "direction": "left"},
+                {"timestamp": 1.5, "luminance": 0.4, "motion": 0.2, "direction": "left"},
+            ]
+        }
+
+        # 1. 首次枚举窗口，应计算局部特征并存入缓存
+        windows_1 = enumerate_windows(asset, required_duration=1.0, step=1.0)
+        self.assertTrue(len(windows_1) >= 2)
+        w0_feats = windows_1[0]["features"]
+        self.assertEqual(w0_feats.get("motion_direction"), "right")
+        self.assertEqual(w0_feats.get("dominant_direction"), "right")
+        self.assertTrue(len(_WINDOW_FEATURE_CACHE) > 0)
+
+        # 2. 二次枚举窗口，应直接命中缓存
+        windows_2 = enumerate_windows(asset, required_duration=1.0, step=1.0)
+        self.assertEqual(windows_1[0]["features"], windows_2[0]["features"])
+
+        # 3. 验证打分契约：目标为 right 时，right 窗口得分高于 left 窗口
+        target_right = {"target_energy": 0.8, "target_direction": "right"}
+        score_w0 = score_candidate(target_right, windows_1[0])
+        score_w1 = score_candidate(target_right, windows_1[1])
+        self.assertGreater(score_w0, score_w1)
+
 if __name__ == "__main__":
     unittest.main()
