@@ -185,6 +185,18 @@ def extract_features(frames: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """构建素材库全局特征索引并持久化，记录 source_fingerprint 防篡改。"""
+    # 在同一素材指纹下保留人工审核/AI 生成的语义标注。
+    # 否则用户补录或复核后重新索引，会把动作证据无声清空。
+    previous_assets = {}
+    try:
+        previous_doc = json.loads(Path(index_path).read_text(encoding="utf-8"))
+        if previous_doc.get("schema_version") == CURRENT_SCHEMA_VERSION:
+            previous_assets = {
+                a.get("path"): a for a in previous_doc.get("assets", [])
+                if isinstance(a, dict)
+            }
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
     assets = []
     for root in media_roots:
         paths = discover_assets(root)
@@ -215,6 +227,25 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
                 },
                 "quality_flags": [] if info.get("valid") else [info.get("error", "invalid")]
             }
+            prior = previous_assets.get(p)
+            if (
+                sf and isinstance(prior, dict)
+                and prior.get("source_fingerprint") == sf
+                and prior.get("valid") is True
+                and asset_entry["valid"]
+            ):
+                for field in ("semantic_segments", "semantic_scope", "semantic_verified"):
+                    if field in prior:
+                        asset_entry[field] = prior[field]
+                prior_feats = prior.get("features")
+                if isinstance(prior_feats, dict):
+                    for field in (
+                        "subject", "action", "actions", "action_tags",
+                        "camera_motion", "dominant_scene", "scene_tags",
+                        "start_pose", "end_pose", "subject_position"
+                    ):
+                        if field in prior_feats:
+                            asset_entry["features"][field] = prior_feats[field]
             assets.append(asset_entry)
 
     doc = {
