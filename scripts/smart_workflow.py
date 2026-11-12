@@ -85,6 +85,16 @@ def approve(
     }
 
     approved = copy.deepcopy(proposed_events)
+    # 显式指定但为空的契约属于无效智能计划，不得被当作旧手工计划。
+    if (
+        ("contracts" in proposed_events and not proposed_events["contracts"])
+        or ("contracts" in source_events and not source_events["contracts"])
+    ):
+        raise MaterialDeficitError("CONTRACTS_REQUIRED: 审批计划包含空契约")
+    if (proposed_events.get("contract_required") or source_events.get("contract_required")) and not (
+        proposed_events.get("contracts") or source_events.get("contracts")
+    ):
+        raise MaterialDeficitError("CONTRACTS_REQUIRED: 智能审批缺少镜头契约")
     raw_contracts = proposed_events.get("contracts") or source_events.get("contracts")
     contracts_by_id = {}
     if raw_contracts:
