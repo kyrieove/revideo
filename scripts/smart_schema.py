@@ -4,7 +4,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 CURRENT_SCHEMA_VERSION = 1
@@ -181,8 +181,13 @@ def validate_decisions(
         # 2. 若物理文件存在，计算当前实际指纹严格比对
         if cand_path and Path(cand_path).exists():
             from scripts.material_index import compute_source_fingerprint
+            # 缺指纹或读不出指纹都拒绝，否则删掉 source_fingerprint 字段即可绕过比对
+            if not cand_fp:
+                raise ValueError(f"Candidate {cand_id} missing source_fingerprint")
             real_fp = compute_source_fingerprint(cand_path)
-            if cand_fp and real_fp and real_fp != cand_fp:
+            if not real_fp:
+                raise ValueError(f"Cannot fingerprint source asset {cand_path}")
+            if real_fp != cand_fp:
                 raise ValueError(f"Source asset {cand_path} was modified on disk after indexing")
 
     if seen_shots != shot_ids:

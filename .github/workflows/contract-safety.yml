@@ -1,6 +1,8 @@
 name: Narrative contract safety
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -38,3 +40,5 @@ jobs:
           python -m unittest discover -s tests -p test_diversity.py -v
       - name: Run complete unittest suite
         run: python -m unittest discover -s tests -v
+      - name: Run tools gate (维护源回归与媒体测试)
+        run: python -B -X utf8 tools/check_revideo.py --fast

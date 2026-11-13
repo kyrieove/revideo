@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 
+capture_task_sheet.md
+out/
+*.tmp
+revideo_*/

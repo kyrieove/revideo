@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 
 def extract_speech_and_phases(audio_path: str, video_duration: float = 0.0) -> Dict[str, Any]:
@@ -22,6 +22,7 @@ def extract_speech_and_phases(audio_path: str, video_duration: float = 0.0) -> D
             "keywords": []
         }
 
+    transcribe_error = None
     try:
         from faster_whisper import WhisperModel
         model = WhisperModel("tiny", device="cpu", compute_type="int8")
@@ -36,7 +37,10 @@ def extract_speech_and_phases(audio_path: str, video_duration: float = 0.0) -> D
                     "text": text
                 })
     except Exception as e:
+        # 没装 whisper / 转写失败不能伪装成「没有对白」
         dialogue = []
+        transcribe_error = f"{type(e).__name__}: {e}"
+        print(f"WARN 对白转写失败：{transcribe_error}", file=sys.stderr)
 
     # 关键词挖掘与时间锚点定位
     setup_end = 3.5
@@ -67,11 +71,14 @@ def extract_speech_and_phases(audio_path: str, video_duration: float = 0.0) -> D
     else:
         phases = [{"phase": "montage", "start": 0.0, "end": 0.0, "description": "默认"}]
 
-    return {
+    result = {
         "dialogue": dialogue,
         "keywords": keywords_found,
         "phases": phases
     }
+    if transcribe_error:
+        result["transcribe_error"] = transcribe_error
+    return result
 
 
 def main():

@@ -2,13 +2,13 @@
 
 import base64
 import html
-import json
 import os
+import shutil
 import subprocess
 import tempfile
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 def render_draft_video(events: Dict[str, Any], output_mp4: str, target_w: int = 320, target_h: int = 180) -> str:
@@ -41,11 +41,11 @@ def render_draft_video(events: Dict[str, Any], output_mp4: str, target_w: int = 
                 continue
 
             in_sec = shot.get("material_in", 0.0)
-            dur = (shot["end"] - shot["start"]) / fps
             p = os.path.join(tmp_dir, f"clip_{idx:03d}.mp4")
+            # 按帧数截取：按秒 -t 逐镜取整会累计切点漂移
             subprocess.run([
                 "ffmpeg", "-v", "error", "-y",
-                "-ss", str(in_sec), "-t", f"{dur:.4f}", "-i", mat,
+                "-ss", str(in_sec), "-i", mat, "-frames:v", str(shot["end"] - shot["start"]),
                 "-vf", f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,crop={target_w}:{target_h},setsar=1",
                 "-c:v", "libx264", "-preset", "ultrafast", "-crf", "30", "-an", "-pix_fmt", "yuv420p", "-r", str(fps), p
             ], check=True)
@@ -63,7 +63,7 @@ def render_draft_video(events: Dict[str, Any], output_mp4: str, target_w: int = 
         ], check=True)
         return str(out_p)
     finally:
-        pass
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def generate_preview(

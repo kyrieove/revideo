@@ -5,7 +5,7 @@
 镜头长度 = end - start 帧，照搬参考片，转场需要的重叠帧自动向后延长/克隆补齐，总帧数与切点绝不漂移。
 音乐优先 --music（默认 offset 0），其次 music.song + song_offset，最后 events.ref 原声（默认 offset 0）；--offset 覆盖起点。
 支持双模渲染：复刻模式严格核验音画对齐；原创模式支持 audio.mode="none" 无音轨直接渲染。"""
-import argparse, json, math, os, subprocess, tempfile
+import argparse, atexit, json, math, os, re, shutil, subprocess, tempfile
 from fractions import Fraction
 from pathlib import Path
 
@@ -14,11 +14,36 @@ def parse_trans(spec):
     if not spec or spec in ('cut', 'none', 'hard'):
         return None, 0
     if isinstance(spec, dict):
-        return spec.get('type', 'fade'), int(spec.get('frames', 6))
-    if ':' in str(spec):
+        t, d = spec.get('type', 'fade'), int(spec.get('frames', 6))
+    elif ':' in str(spec):
         t, d = str(spec).split(':', 1)
-        return t, int(d)
-    return str(spec), 6
+        d = int(d)
+    else:
+        t, d = str(spec), 6
+    # 转场名直接拼进 filter_complex：只允许字母数字，防止 events.json 注入滤镜
+    if not isinstance(t, str) or not re.fullmatch(r'[a-z0-9]+', t):
+        raise ValueError(f'非法转场名：{t!r}')
+    return t, d
+
+
+def parse_size(size):
+    """size 直接拼进 scale/crop 滤镜串：必须是两个正整数。"""
+    if (not isinstance(size, (list, tuple)) or len(size) != 2
+            or any(type(v) is not int or v <= 0 for v in size)):
+        raise ValueError(f'size 必须是两个正整数 [宽, 高]：{size!r}')
+    return size
+
+
+def audio_duration(stream, fmt):
+    """mkv/webm/ogg 不写流级时长，退回容器级时长。"""
+    for v in (stream.get('duration'), fmt.get('duration')):
+        try:
+            d = float(v)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(d):
+            return d
+    return float('nan')
 
 
 def probe(path, count=False):
@@ -125,6 +150,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('events'); ap.add_argument('out')
     ap.add_argument('--music'); ap.add_argument('--offset', type=float)
+    ap.add_argument('--keep-temp', action='store_true', help='保留 ffv1 中间文件（排查用）')
     ap.add_argument('--transition', help='全局默认转场，如 fade:6 或 wipeleft:4（shots[i].transition 可单独覆盖）')
     o = ap.parse_args()
     ev = json.load(open(o.events, encoding='utf-8'))
@@ -155,20 +181,23 @@ def main():
         off = o.offset if o.offset is not None else (m.get('song_offset') or 0) if not o.music and m.get('song') else 0
         if not math.isfinite(off) or off < 0:
             raise ValueError('音轨起点必须有限且非负')
-        audio = [s for s in probe(music)['streams'] if s['codec_type'] == 'audio']
+        pr = probe(music)
+        audio = [s for s in pr['streams'] if s['codec_type'] == 'audio']
         if not audio:
             raise ValueError(f'音源没有音轨：{music}')
-        available = float(audio[0].get('duration', 'nan'))
+        available = audio_duration(audio[0], pr.get('format', {}))
         if not math.isfinite(available) or available + 0.001 < off + dur:
             raise ValueError(f'音源不足或无法确认时长：需要 {off + dur:.4f} 秒，实际 {available}')
 
-    W, H = ev.get('size', [1280, 720])
+    W, H = parse_size(ev.get('size', [1280, 720]))
     fr, fps = ev['fps_str'], float(ev['fps'])
     shots = ev['shots']
     missing = [f"#{s['id']}[role: {s.get('role') or '未填'}]" for s in shots if not s.get('material')]
     if missing:
         raise SystemExit(f"这些镜头还没有素材：{', '.join(missing)}")
     tmp = tempfile.mkdtemp(prefix='revideo_')
+    if not o.keep_temp:
+        atexit.register(shutil.rmtree, tmp, True)
 
     # in_trans[i] = 进入第 i 镜的转场 (type, frames)，首镜无进入转场
     in_trans = [(None, 0)]

@@ -135,11 +135,11 @@ with tempfile.TemporaryDirectory(prefix='revideo_regression_') as fixture:
         command('av1_compare', [PYTHON, ROOT / 'check.py', 'compare', av1, av1, 0, 24], True)
         av_events = {**ev, 'frames': 24, 'fps': 60, 'fps_str': '60/1', 'shots': [
             {'id': 1, 'start': 0, 'end': 12}, {'id': 2, 'start': 12, 'end': 24}]}
+        event_path.write_text(json.dumps(av_events), encoding='utf-8')
+        command('av1_energy_decoder', [PYTHON, ROOT / 'check.py', 'energy', event_path, av1, av1, work / 'energy.svg'], True)
     else:
-        record('av1_exact_range', True, skipped='av1 sample absent')
-        record('av1_detail', True, skipped='av1 sample absent')
-    event_path.write_text(json.dumps(av_events), encoding='utf-8')
-    command('av1_energy_decoder', [PYTHON, ROOT / 'check.py', 'energy', event_path, av1, av1, work / 'energy.svg'], True)
+        for name in ('av1_exact_range', 'av1_detail', 'av1_energy_decoder'):
+            record(name, True, skipped='av1 sample absent')
     for name in ('effects', 'peaks'):
         command(name + '_selftest', [PYTHON, '-B', '-X', 'utf8', ROOT / (name + '.py'), 'selftest'], True)
 

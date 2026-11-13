@@ -31,6 +31,15 @@ fx = load('fx/motion_blur') if (ROOT / 'fx/motion_blur.py').is_file() else None
 
 
 class MediaTests(unittest.TestCase):
+    def setUp(self):
+        view_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(view_dir.cleanup)
+        view = Path(view_dir.name) / 'timeline_view.py'
+        view.write_text('', encoding='utf-8')
+        patcher = mock.patch.object(strips, 'VIEW', view)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_loudness_reports_gain_delta(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)

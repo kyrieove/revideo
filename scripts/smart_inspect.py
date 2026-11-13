@@ -6,11 +6,11 @@
 3. 单页自包含、零外部外链、Dark Studio 电影级深色主题的 Canvas 走带交互页面
 """
 
+import html
 import json
-import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import numpy as np
 
 
@@ -44,22 +44,21 @@ def extract_motion_curve(video_path: str, fps: float = 30.0) -> List[float]:
         "ffmpeg", "-v", "error", "-i", str(video_path),
         "-vf", f"fps={fps},scale=120:68,format=gray", "-f", "rawvideo", "-"
     ]
+    frame_bytes = 120 * 68
     try:
-        proc_v = subprocess.run(cmd_v, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        raw_v = proc_v.stdout
-        frame_bytes = 120 * 68
-        num_v_frames = len(raw_v) // frame_bytes
-        motion_curve = []
-        prev_f = None
-        for i in range(num_v_frames):
-            chunk = np.frombuffer(raw_v[i * frame_bytes : (i + 1) * frame_bytes], dtype=np.uint8)
-            if prev_f is not None:
-                diff = float(np.mean(np.abs(chunk.astype(np.float32) - prev_f.astype(np.float32))) / 255.0)
-            else:
-                diff = 0.0
-            prev_f = chunk
-            motion_curve.append(round(min(1.0, diff * 5.0), 3))
-        return motion_curve
+        # 流式逐帧读取：不把整段视频的灰度帧一次读进内存
+        with subprocess.Popen(cmd_v, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as proc:
+            motion_curve = []
+            prev_f = None
+            while True:
+                buf = proc.stdout.read(frame_bytes)
+                if len(buf) < frame_bytes:
+                    break
+                chunk = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+                diff = 0.0 if prev_f is None else float(np.mean(np.abs(chunk - prev_f)) / 255.0)
+                prev_f = chunk
+                motion_curve.append(round(min(1.0, diff * 5.0), 3))
+        return motion_curve if proc.returncode == 0 else []
     except Exception:
         return []
 
@@ -151,14 +150,18 @@ def generate_rhythm_inspector(video_path: str, events: Dict[str, Any], out_path:
         "motion": motion
     }
 
-    json_str = json.dumps(payload, ensure_ascii=False)
+    # 内联进 <script>：转义 < > & 防止场景标签里的 </script> 提前闭合
+    json_str = (json.dumps(payload, ensure_ascii=False)
+                .replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))
+    title_h = html.escape(payload['title'])
+    video_src_h = html.escape(payload['video_src'], quote=True)
 
     html_code = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rhythm Inspector - {payload['title']}</title>
+<title>Rhythm Inspector - {title_h}</title>
 <style>
 :root {{
   --bg: #090a0f;
@@ -384,7 +387,7 @@ canvas#flowCanvas {{ width: 100%; height: 100%; display: block; }}
 
 <header>
   <div class="title-area">
-    <h1>{payload['title']} · 卡点走带工作台</h1>
+    <h1>{title_h} · 卡点走带工作台</h1>
     <span class="badge">{payload['total_seconds']}s · {payload['total_frames']} 帧 · {len(shots_data)} 镜头</span>
     <span class="badge" style="color:#10b981; border-color:rgba(16,185,129,0.3);">{len(drums_data)} 处鼓点</span>
   </div>
@@ -405,7 +408,7 @@ canvas#flowCanvas {{ width: 100%; height: 100%; display: block; }}
 
 <div class="main-stage">
   <div class="video-wrapper">
-    <video id="refVideo" src="{payload['video_src']}" playsinline preload="auto"></video>
+    <video id="refVideo" src="{video_src_h}" playsinline preload="auto"></video>
     <div class="cut-flash-overlay">
       <div class="status-pill">
         <div class="pill-dot" id="pillDot"></div>

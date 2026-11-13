@@ -2,7 +2,6 @@
 import argparse
 from pathlib import Path
 import shutil
-import sys
 
 DEFAULT_TARGETS = [
     Path(r"C:\Users\ASUS\.skills-manager\skills\revideo"),

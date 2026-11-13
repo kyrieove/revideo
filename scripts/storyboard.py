@@ -14,9 +14,6 @@ Usage:
 import argparse
 import html
 import json
-import math
-import os
-import subprocess
 from pathlib import Path
 
 
@@ -167,9 +164,9 @@ def generate_storyboard_html(events_path, out_html_path):
         end_f = s.get('end', 0)
         dur_s = round((end_f - start_f) / fps, 2)
 
-        mat = s.get('material', '未指定')
-        mat_in = s.get('material_in', 0.0)
-        mat_display = f"{Path(mat).name} @ {mat_in:.2f}s" if mat != '未指定' else '未选定'
+        mat = s.get('material')  # analyze.py 新生成的事件表里为 null
+        mat_in = s.get('material_in') or 0.0
+        mat_display = f"{Path(mat).name} @ {mat_in:.2f}s" if mat else '未选定'
 
         framing = s.get('framing') or (s.get('review', {}).get('framing') if isinstance(s.get('review'), dict) else '未指定')
         motion = s.get('motion_dir') or (s.get('review', {}).get('motion_dir') if isinstance(s.get('review'), dict) else '未指定')
@@ -177,15 +174,16 @@ def generate_storyboard_html(events_path, out_html_path):
         candidates = s.get('candidates', [])
         cand_rows = []
         for i, c in enumerate(candidates):
-            c_name = Path(c.get('file', '')).name
-            c_in = c.get('in', 0.0)
+            # 兼容 smart_compose 输出（path/in_sec）与旧字段（file/in）
+            c_name = Path(c.get('path') or c.get('file') or '').name
+            c_in = c.get('in_sec', c.get('in')) or 0.0
             sc = c.get('score', 0)
             c_motion = c.get('motion', '-')
             c_framing = c.get('framing', '-')
             cand_rows.append(f"""
               <div class="candidate-row">
-                <span>#{i+1} {html.escape(c_name)} ({c_in:.1f}s | {c_framing} | {c_motion})</span>
-                <span class="score-badge">{sc}分</span>
+                <span>#{i+1} {html.escape(c_name)} ({c_in:.1f}s | {html.escape(str(c_framing))} | {html.escape(str(c_motion))})</span>
+                <span class="score-badge">{html.escape(str(sc))}分</span>
               </div>
             """)
 
@@ -197,8 +195,8 @@ def generate_storyboard_html(events_path, out_html_path):
         card = f"""
         <div class="shot-card">
           <div class="shot-head">
-            <span>镜头 #{sid}</span>
-            <span class="badge">{start_f}-{end_f} 帧 ({dur_s}s)</span>
+            <span>镜头 #{html.escape(str(sid))}</span>
+            <span class="badge">{html.escape(str(start_f))}-{html.escape(str(end_f))} 帧 ({dur_s}s)</span>
           </div>
           <div class="attr-list">
             <span class="attr-item">景别: {html.escape(str(framing))}</span>

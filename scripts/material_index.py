@@ -2,12 +2,11 @@
 
 import hashlib
 import json
-import math
 import os
 import subprocess
 from pathlib import Path
 import numpy as np
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 CURRENT_SCHEMA_VERSION = 1
 SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
@@ -255,9 +254,12 @@ def build_index(media_roots: List[str], index_path: str, events: Optional[Dict[s
     
     out_p = Path(index_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_p, "w", encoding="utf-8") as f:
+    # 先写临时文件再原子替换：中途中断不会留下半截 JSON 而丢掉人工语义标注
+    tmp_p = out_p.with_name(out_p.name + ".tmp")
+    with open(tmp_p, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
-        
+    os.replace(tmp_p, out_p)
+
     return doc
 
 
